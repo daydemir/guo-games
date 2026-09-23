@@ -47,8 +47,9 @@ it('still lets a phone pick an identity so the recap is readable', () => {
 
 it('lets an organizer move the closing date but never into the past', () => {
   const state = as('Deniz');
-  const later = '2027-07-09T10:00:00Z';
+  const later = '2027-07-09T10:00:00.000Z';
   expect(act(state, { type: 'settings', expiresAt: later }, NOW).settings.expiresAt).toBe(later);
+  expect(act(state, { type: 'settings', expiresAt: 'July 9, 2027 10:00 UTC' }, NOW).settings.expiresAt).toBe(later);
   expect(() => act(state, { type: 'settings', expiresAt: '2020-01-01T00:00:00Z' }, NOW)).toThrow(/in the past/i);
   expect(() => act(state, { type: 'settings', expiresAt: 'not a date' }, NOW)).toThrow(/date/i);
 });

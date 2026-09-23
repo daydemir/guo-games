@@ -1,128 +1,128 @@
- ✓ src/core/predictions.test.ts > caps each attendee at three open predictions but allows changing an existing pick 5ms
+ ✓ src/core/storage.test.ts > seeds a demo party on a device that has never opened the app 147ms
+ ✓ src/core/storage.test.ts > round-trips a saved party without touching it 5ms
+ ✓ src/core/storage.test.ts > migrates an older save by filling in the settings that did not exist yet 0ms
+ ✓ src/core/storage.test.ts > reports unreadable or newer saves instead of silently destroying them 0ms
+ ✓ src/core/storage.test.ts > turns a full storage quota into an explainable message 0ms
+ ✓ src/core/storage.test.ts > clears back to a fresh demo party 0ms
+ ✓ src/core/storage.test.ts > flags an unreadable save and hands back the raw text so it can be rescued 0ms
+ ✓ src/core/storage.test.ts > does not call an empty device unreadable 0ms
+ ✓ src/core/storage.test.ts > treats a closing date it cannot read as an unreadable save, not an open trip 0ms
+ ✓ src/core/storage.test.ts > does not mistake a read that throws for an empty device 0ms
+ ✓ src/core/vault.test.ts > keeps a memory private to its author and the organizer inbox until dinner reveals it 414ms
+ ✓ src/core/today.test.ts > asks an unjoined phone to join first 149ms
+ ✓ src/core/today.test.ts > walks an attendee through one thing at a time 64ms
+ ✓ src/core/today.test.ts > gives spectators something to do that is not a task 0ms
+ ✓ src/core/today.test.ts > turns the home screen into a recap pointer once the trip closes 0ms
+ ✓ src/core/media.test.ts > accepts a small photo or voice note 182ms
+ ✓ src/core/media.test.ts > rejects file types that can carry script or that the app cannot play 0ms
+ ✓ src/core/media.test.ts > rejects anything that is not a real base64 data URL of the declared type 49ms
+ ✓ src/core/media.test.ts > holds each file under the local budget 0ms
+ ✓ src/core/vault.test.ts > holds a reveal until dinner is open and restricts it to organizers 2ms
+ ✓ src/core/vault.test.ts > lets an author withdraw their own memory and stops anyone else doing it 156ms
+ ✓ src/core/vault.test.ts > needs either words or a file, and holds stories to a readable length 0ms
+ ✓ src/core/vault.test.ts > caps how many memories one device will hold 1ms
+ ✓ src/core/vault.test.ts > keeps memory text out of the shared feed 0ms
+ ✓ src/core/vault.test.ts > groups the organizer inbox by the attendee each memory is about 0ms
+ ✓ src/core/media.test.ts > stops the vault filling the browser storage quota 475ms
+ ✓ src/core/media.test.ts > leaves an already small photo alone 0ms
+ ✓ src/core/media.test.ts > scales a phone photo down by its long edge, keeping the aspect ratio 0ms
+ ✓ src/core/media.test.ts > never returns a zero dimension for an extreme panorama 0ms
+ ✓ src/core/bounties.test.ts > requires an opt-in claim before anyone can confirm 23ms
+ ✓ src/core/bounties.test.ts > holds each attendee to one live bounty at a time 0ms
+ ✓ src/core/bounties.test.ts > needs a witness who is not the claimant, and pays out once confirmed 1ms
+ ✓ src/core/bounties.test.ts > voids without penalty and frees the attendee to claim something else 0ms
+ ✓ src/core/bounties.test.ts > never puts bounty detail in the shared feed before it is confirmed 0ms
+ ✓ src/core/bounties.test.ts > lets anyone void a claim that is still open 0ms
+ ✓ src/core/bounties.test.ts > stops a bystander erasing a confirmed bounty, but lets its owner or an organizer 0ms
+ ✓ src/core/today.test.ts > offers the energy-dip spark only between four and seven in the evening 483ms
+ ✓ src/core/today.test.ts > counts down only when the close is near, and shows the date until then 703ms
+ ✓ src/app/downscale.test.ts > names the resized file as a jpeg whatever it started as 1ms
+ ✓ src/app/downscale.test.ts > releases the bitmap on the happy path 277ms
+ ✓ src/app/downscale.test.ts > releases the bitmap when the canvas refuses a 2d context 107ms
+ ✓ src/app/downscale.test.ts > releases the bitmap when drawing the photo throws 308ms
+ ✓ src/app/downscale.test.ts > releases the bitmap when no quality step ever fits the budget 947ms
+ ✓ src/core/dinner.test.ts > hides standings until dinner when the organizer keeps rankings sealed 8ms
+ ✓ src/core/killswitch.test.ts > flips to read-only exactly at the configured instant 777ms
+ ✓ src/core/killswitch.test.ts > refuses every mutation after the kill switch, including organizer controls 1ms
+ ✓ src/core/killswitch.test.ts > still lets a phone pick an identity so the recap is readable 0ms
+ ✓ src/core/join.test.ts > joining the party > accepts the party code case-insensitively and keeps the chosen name and color 154ms
+ ✓ src/core/dinner.test.ts > lets an organizer unseal rankings early or switch to story awards 172ms
+ ✓ src/core/dinner.test.ts > gives every attendee exactly one kind award card, most distinctive first 2ms
+ ✓ src/core/killswitch.test.ts > lets an organizer move the closing date but never into the past 500ms
+ ✓ src/core/dinner.test.ts > seals a future note once per attendee and keeps it closed until its own date 111ms
+ ✓ src/core/dinner.test.ts > keeps the sealed note text out of the shared feed 0ms
+ ✓ src/core/join.test.ts > joining the party > treats spectator as a valid identity 1ms
+ ✓ src/core/join.test.ts > joining the party > rejects a wrong code and an unusable name without changing state 47ms
+ ✓ src/core/join.test.ts > joining the party > recognises Deniz and Nick as the only organizers 0ms
+ ✓ src/core/join.test.ts > joining the party > records an arrival in the shared feed once per identity 0ms
+ ✓ src/core/join.test.ts > logs a spectator arrival once however many times the phone switches back 0ms
+ ✓ src/core/predictions.test.ts > caps each attendee at three open predictions but allows changing an existing pick 122ms
  ✓ src/core/predictions.test.ts > refuses picks from spectators 0ms
  ✓ src/core/predictions.test.ts > awards points only for correct picks on settled predictions 0ms
  ✓ src/core/predictions.test.ts > lets only organizers settle, makes settlement final, and closes the pick 0ms
  ✓ src/core/predictions.test.ts > lets anyone void an open prediction, because opting out has to stay easy 0ms
  ✓ src/core/predictions.test.ts > stops a bystander erasing a settled prediction, but lets an organizer do it 0ms
  ✓ src/core/predictions.test.ts > frees a pick slot once one of your predictions settles or is voided 0ms
- ✓ src/core/dinner.test.ts > hides standings until dinner when the organizer keeps rankings sealed 9ms
- ✓ src/core/dinner.test.ts > lets an organizer unseal rankings early or switch to story awards 2ms
- ✓ src/core/dinner.test.ts > gives every attendee exactly one kind award card, most distinctive first 4ms
- ✓ src/core/dinner.test.ts > seals a future note once per attendee and keeps it closed until its own date 0ms
- ✓ src/core/dinner.test.ts > keeps the sealed note text out of the shared feed 1ms
- ✓ src/core/backup.test.ts > round-trips a whole party through a backup file 12ms
- ✓ src/core/backup.test.ts > writes something a human can recognise as this app 0ms
+ ✓ src/core/backup.test.ts > round-trips a whole party through a backup file 245ms
+ ✓ src/core/backup.test.ts > writes something a human can recognise as this app 1ms
  ✓ src/core/backup.test.ts > refuses a file that is not a Guo Games backup 1ms
- ✓ src/core/backup.test.ts > refuses a complete backup that holds a value this build cannot understand 0ms
+ ✓ src/core/backup.test.ts > refuses a complete backup that holds a value this build cannot understand 1ms
  ✓ src/core/backup.test.ts > refuses an incomplete version 3 party instead of defaulting it to an empty one 0ms
- ✓ src/core/backup.test.ts > still accepts a complete version 3 party written by this app 0ms
+ ✓ src/core/backup.test.ts > still accepts a complete version 3 party written by this app 45ms
  ✓ src/core/backup.test.ts > rejects a version 3 backup whose settings block is empty or partial 0ms
  ✓ src/core/backup.test.ts > rejects a version 3 backup whose settings are not an object 0ms
  ✓ src/core/backup.test.ts > rejects a bare version 2 backup instead of migrating it into an empty party 0ms
  ✓ src/core/backup.test.ts > rejects representative truncated version 2 backups 0ms
  ✓ src/core/backup.test.ts > accepts a complete version 2 backup and fills in only what version 3 added 0ms
- ✓ src/core/bounties.test.ts > requires an opt-in claim before anyone can confirm 8ms
- ✓ src/core/bounties.test.ts > holds each attendee to one live bounty at a time 0ms
- ✓ src/core/bounties.test.ts > needs a witness who is not the claimant, and pays out once confirmed 4ms
- ✓ src/core/bounties.test.ts > voids without penalty and frees the attendee to claim something else 0ms
- ✓ src/core/bounties.test.ts > never puts bounty detail in the shared feed before it is confirmed 0ms
- ✓ src/core/bounties.test.ts > lets anyone void a claim that is still open 0ms
- ✓ src/core/bounties.test.ts > stops a bystander erasing a confirmed bounty, but lets its owner or an organizer 1ms
- ✓ src/core/storage.test.ts > seeds a demo party on a device that has never opened the app 9ms
- ✓ src/core/storage.test.ts > round-trips a saved party without touching it 5ms
- ✓ src/core/storage.test.ts > migrates an older save by filling in the settings that did not exist yet 1ms
- ✓ src/core/storage.test.ts > reports unreadable or newer saves instead of silently destroying them 1ms
- ✓ src/core/storage.test.ts > turns a full storage quota into an explainable message 0ms
- ✓ src/core/storage.test.ts > clears back to a fresh demo party 0ms
- ✓ src/core/storage.test.ts > flags an unreadable save and hands back the raw text so it can be rescued 0ms
- ✓ src/core/storage.test.ts > does not call an empty device unreadable 2ms
- ✓ src/core/storage.test.ts > treats a closing date it cannot read as an unreadable save, not an open trip 1ms
- ✓ src/core/storage.test.ts > does not mistake a read that throws for an empty device 0ms
- ✓ src/core/today.test.ts > asks an unjoined phone to join first 5ms
- ✓ src/core/today.test.ts > walks an attendee through one thing at a time 4ms
- ✓ src/core/today.test.ts > gives spectators something to do that is not a task 0ms
- ✓ src/core/today.test.ts > turns the home screen into a recap pointer once the trip closes 0ms
- ✓ src/core/today.test.ts > offers the energy-dip spark only between four and seven in the evening 7ms
- ✓ src/core/today.test.ts > counts down only when the close is near, and shows the date until then 35ms
- ✓ src/core/draft.test.ts > gives each attendee exactly one species and replaces an earlier choice 4ms
- ✓ src/core/draft.test.ts > refuses a species another attendee already drafted 1ms
- ✓ src/core/draft.test.ts > releases a species back to the board when its drafter switches away 0ms
- ✓ src/core/draft.test.ts > reports every species with its drafter so the board can show what is gone 0ms
- ✓ src/app/useParty.test.ts > reports an unreadable save rather than quietly starting over 9ms
- ✓ src/app/useParty.test.ts > refuses every write while an unreadable save is unresolved 1ms
- ✓ src/app/useParty.test.ts > hands back the raw bytes, not a backup of the rescued empty party 1ms
- ✓ src/app/useParty.test.ts > clears the block once the player resets, and plays normally after 2ms
- ✓ src/app/useParty.test.ts > writes normally when the device save is fine 1ms
- ✓ src/app/useParty.test.ts > leaves a healthy device untouched when a truncated backup is imported 1ms
- ✓ src/app/useParty.test.ts > keeps the last saved state on screen when a write fails, so nothing appears saved that is not 1ms
- ✓ src/app/useParty.test.ts > reports whether a command worked, so a form knows when it may clear 1ms
- ✓ src/app/useParty.test.ts > keeps saying so when the browser will not store anything, even after things work 0ms
- ✓ src/app/useParty.test.ts > never writes to a device it could not read, in case a party is hiding there 1ms
- ✓ src/core/media.test.ts > accepts a small photo or voice note 6ms
- ✓ src/core/media.test.ts > rejects file types that can carry script or that the app cannot play 0ms
- ✓ src/core/media.test.ts > rejects anything that is not a real base64 data URL of the declared type 0ms
- ✓ src/core/media.test.ts > holds each file under the local budget 0ms
- ✓ src/core/media.test.ts > stops the vault filling the browser storage quota 6ms
- ✓ src/core/media.test.ts > leaves an already small photo alone 0ms
- ✓ src/core/media.test.ts > scales a phone photo down by its long edge, keeping the aspect ratio 0ms
- ✓ src/core/media.test.ts > never returns a zero dimension for an extreme panorama 0ms
- ✓ src/core/join.test.ts > joining the party > accepts the party code case-insensitively and keeps the chosen name and color 4ms
- ✓ src/core/join.test.ts > joining the party > treats spectator as a valid identity 0ms
- ✓ src/core/join.test.ts > joining the party > rejects a wrong code and an unusable name without changing state 1ms
- ✓ src/core/join.test.ts > joining the party > recognises Deniz and Nick as the only organizers 0ms
- ✓ src/core/join.test.ts > joining the party > records an arrival in the shared feed once per identity 0ms
- ✓ src/core/join.test.ts > logs a spectator arrival once however many times the phone switches back 0ms
- ✓ src/core/vault.test.ts > keeps a memory private to its author and the organizer inbox until dinner reveals it 4ms
- ✓ src/core/vault.test.ts > holds a reveal until dinner is open and restricts it to organizers 0ms
- ✓ src/core/vault.test.ts > lets an author withdraw their own memory and stops anyone else doing it 0ms
- ✓ src/core/vault.test.ts > needs either words or a file, and holds stories to a readable length 0ms
- ✓ src/core/vault.test.ts > caps how many memories one device will hold 1ms
- ✓ src/core/vault.test.ts > keeps memory text out of the shared feed 0ms
- ✓ src/core/vault.test.ts > groups the organizer inbox by the attendee each memory is about 0ms
- ✓ src/core/killswitch.test.ts > flips to read-only exactly at the configured instant 13ms
- ✓ src/core/killswitch.test.ts > refuses every mutation after the kill switch, including organizer controls 1ms
- ✓ src/core/killswitch.test.ts > still lets a phone pick an identity so the recap is readable 0ms
- ✓ src/core/killswitch.test.ts > lets an organizer move the closing date but never into the past 0ms
- ✓ src/app/screens/Vault.test.tsx > disables saving while a photo is still being resized 53ms
- ✓ src/app/screens/Vault.test.tsx > ignores a slow resize that lands after a newer photo was picked 27ms
- ✓ src/app/downscale.test.ts > names the resized file as a jpeg whatever it started as 1ms
- ✓ src/app/downscale.test.ts > releases the bitmap on the happy path 1ms
- ✓ src/app/downscale.test.ts > releases the bitmap when the canvas refuses a 2d context 1ms
- ✓ src/app/downscale.test.ts > releases the bitmap when drawing the photo throws 0ms
- ✓ src/app/downscale.test.ts > releases the bitmap when no quality step ever fits the budget 9ms
- ✓ src/core/missions.test.ts > shows a mission only to the attendee holding this device 4ms
+ ✓ src/app/useParty.test.ts > reports an unreadable save rather than quietly starting over 985ms
+ ✓ src/app/useParty.test.ts > refuses every write while an unreadable save is unresolved 66ms
+ ✓ src/app/useParty.test.ts > hands back the raw bytes, not a backup of the rescued empty party 394ms
+ ✓ src/app/useParty.test.ts > clears the block once the player resets, and plays normally after 350ms
+ ✓ src/app/screens/Vault.test.tsx > disables saving while a photo is still being resized 2295ms
+ ✓ src/app/useParty.test.ts > writes normally when the device save is fine 216ms
+ ✓ src/app/useParty.test.ts > leaves a healthy device untouched when a truncated backup is imported 384ms
+ ✓ src/app/useParty.test.ts > keeps the last saved state on screen when a write fails, so nothing appears saved that is not 4ms
+ ✓ src/app/useParty.test.ts > reports whether a command worked, so a form knows when it may clear 322ms
+ ✓ src/app/useParty.test.ts > keeps saying so when the browser will not store anything, even after things work 2ms
+ ✓ src/app/useParty.test.ts > never writes to a device it could not read, in case a party is hiding there 70ms
+ ✓ src/app/screens/Vault.test.tsx > ignores a slow resize that lands after a newer photo was picked 1409ms
+ ✓ src/core/draft.test.ts > gives each attendee exactly one species and replaces an earlier choice 267ms
+ ✓ src/core/draft.test.ts > refuses a species another attendee already drafted 50ms
+ ✓ src/core/draft.test.ts > releases a species back to the board when its drafter switches away 1ms
+ ✓ src/core/draft.test.ts > reports every species with its drafter so the board can show what is gone 1ms
+ ✓ src/app/screens/Vault.test.tsx > never attaches a resize that finishes after the memory was already saved 1562ms
+ ✓ src/app/screens/Vault.test.tsx > never attaches a voice note whose read finishes after the memory was saved 386ms
+ ✓ src/core/missions.test.ts > shows a mission only to the attendee holding this device 346ms
  ✓ src/core/missions.test.ts > keeps mission text out of the shared feed 0ms
- ✓ src/core/missions.test.ts > requires accepting before completing, and pays only a completed mission 1ms
- ✓ src/core/missions.test.ts > lets an attendee pass on a mission at any time with no penalty 0ms
- ✓ src/app/App.test.tsx > prefills the demo party code so joining is a name and one tap 18ms
- ✓ src/app/App.test.tsx > opens on the join screen and lands an attendee on their one next action 68ms
- ✓ src/app/download.test.ts > clicks a link with the filename and cleans the element up straight away 3ms
+ ✓ src/core/missions.test.ts > requires accepting before completing, and pays only a completed mission 138ms
+ ✓ src/core/missions.test.ts > lets an attendee pass on a mission at any time with no penalty 1ms
+ ✓ src/app/screens/Vault.test.tsx > keeps the story and the photo when the save is refused 3541ms
+ ✓ src/app/App.test.tsx > prefills the demo party code so joining is a name and one tap 721ms
+ ✓ src/app/App.test.tsx > opens on the join screen and lands an attendee on their one next action 2683ms
+ ✓ src/app/App.test.tsx > explains a wrong party code instead of failing silently 1425ms
+ ✓ src/app/App.test.tsx > shows settle controls to an organizer and hides them from everyone else 699ms
+ ✓ src/app/download.test.ts > clicks a link with the filename and cleans the element up straight away 5ms
  ✓ src/app/download.test.ts > keeps the object URL alive long enough for WebKit to start the download 1ms
- ✓ src/app/screens/Vault.test.tsx > never attaches a resize that finishes after the memory was already saved 71ms
- ✓ src/app/screens/Vault.test.tsx > never attaches a voice note whose read finishes after the memory was saved 40ms
- ✓ src/app/screens/Vault.test.tsx > keeps the story and the photo when the save is refused 70ms
- ✓ src/app/App.test.tsx > explains a wrong party code instead of failing silently 41ms
- ✓ src/app/App.test.tsx > shows settle controls to an organizer and hides them from everyone else 108ms
- ✓ src/app/App.test.tsx > stops a second attendee drafting a species that is gone 58ms
- ✓ src/app/App.test.tsx > keeps a private mission on the phone that owns it 90ms
- ✓ src/app/App.test.tsx > turns the whole app read-only once the closing date has passed 15ms
- ✓ src/app/App.test.tsx > resets a device back to the seeded demo party 67ms
- ✓ src/app/App.test.tsx > switching identity needs a deliberate apply and never carries one person's name to another 118ms
- ✓ src/app/App.test.tsx > refuses to write over an unreadable save and offers a way out 13ms
- ✓ src/app/App.test.tsx > leaves the unreadable bytes on the device until the player resolves them 10ms
- ✓ src/app/App.test.tsx > restores a backup file over an unreadable save 14ms
- ✓ src/app/App.test.tsx > exports a backup file that reads straight back in 67ms
- ✓ src/app/App.test.tsx > explains an unusable closing date instead of throwing 81ms
- ✓ src/app/App.test.tsx > shows why a bad backup file was refused, on the recovery screen itself 21ms
- ✓ src/app/App.test.tsx > refuses an incomplete backup without touching what is already saved 80ms
- ✓ src/app/App.test.tsx > settles the name field after Apply so the form stops looking unsaved 87ms
- ✓ src/app/App.test.tsx > does not offer a spectator a void control they cannot use 70ms
- ✓ src/app/App.test.tsx > offers void on an open prediction but not on a settled one, for a plain attendee 62ms
- ✓ src/app/App.test.tsx > fits the day into six tabs, with You reached from the name in the masthead 48ms
- ✓ src/app/App.test.tsx > shows the shared feed on Today, and the rest of it on request 42ms
- ✓ src/app/App.test.tsx > gives a spectator the boards to watch but no controls that would only be refused 76ms
- ✓ src/app/App.test.tsx > lets an organizer read a vault story out from the Dinner tab, for everyone to see 126ms
- ✓ src/app/App.test.tsx > keeps a sealed note on screen when sealing it is refused 77ms
- ✓ src/app/App.test.tsx > takes "Draft a fish" straight to the Dock Draft, not the top of Picks 115ms
+ ✓ src/app/App.test.tsx > stops a second attendee drafting a species that is gone 302ms
+ ✓ src/app/App.test.tsx > keeps a private mission on the phone that owns it 161ms
+ ✓ src/app/App.test.tsx > turns the whole app read-only once the closing date has passed 48ms
+ ✓ src/app/App.test.tsx > resets a device back to the seeded demo party 208ms
+ ✓ src/app/App.test.tsx > switching identity needs a deliberate apply and never carries one person's name to another 221ms
+ ✓ src/app/App.test.tsx > refuses to write over an unreadable save and offers a way out 19ms
+ ✓ src/app/App.test.tsx > leaves the unreadable bytes on the device until the player resolves them 14ms
+ ✓ src/app/App.test.tsx > restores a backup file over an unreadable save 28ms
+ ✓ src/app/App.test.tsx > exports a backup file that reads straight back in 92ms
+ ✓ src/app/App.test.tsx > explains an unusable closing date instead of throwing 103ms
+ ✓ src/app/App.test.tsx > shows why a bad backup file was refused, on the recovery screen itself 12ms
+ ✓ src/app/App.test.tsx > refuses an incomplete backup without touching what is already saved 94ms
+ ✓ src/app/App.test.tsx > settles the name field after Apply so the form stops looking unsaved 98ms
+ ✓ src/app/App.test.tsx > does not offer a spectator a void control they cannot use 89ms
+ ✓ src/app/App.test.tsx > offers void on an open prediction but not on a settled one, for a plain attendee 96ms
+ ✓ src/app/App.test.tsx > fits the day into six tabs, with You reached from the name in the masthead 79ms
+ ✓ src/app/App.test.tsx > shows the shared feed on Today, and the rest of it on request 73ms
+ ✓ src/app/App.test.tsx > gives a spectator the boards to watch but no controls that would only be refused 110ms
+ ✓ src/app/App.test.tsx > lets an organizer read a vault story out from the Dinner tab, for everyone to see 220ms
+ ✓ src/app/App.test.tsx > keeps a sealed note on screen when sealing it is refused 104ms
+ ✓ src/app/App.test.tsx > takes "Draft a fish" straight to the Dock Draft, not the top of Picks 159ms
  Test Files  17 passed (17)
       Tests  126 passed (126)

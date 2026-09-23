@@ -266,7 +266,8 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
         const parsed = Date.parse(action.expiresAt);
         if (Number.isNaN(parsed)) throw new Error('That is not a date the app can read.');
         if (parsed <= now) throw new Error('The closing date cannot be in the past.');
-        next.settings.expiresAt = action.expiresAt;
+        // Stored as canonical ISO, whatever parseable shape the caller used.
+        next.settings.expiresAt = new Date(parsed).toISOString();
       }
       if (action.hideRankings !== undefined) next.settings.hideRankings = action.hideRankings;
       if (action.awards !== undefined) next.settings.awards = action.awards;
