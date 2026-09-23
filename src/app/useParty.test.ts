@@ -65,3 +65,17 @@ it('writes normally when the device save is fine', () => {
   reactAct(() => result.current.signIn('GUO27', 'Nick', 'Nick', 'sea'));
   expect(read()).toContain('Nick');
 });
+
+it('leaves a healthy device untouched when a truncated backup is imported', () => {
+  const { storage, read } = device();
+  const { result } = renderHook(() => useParty(storage));
+  reactAct(() => result.current.signIn('GUO27', 'Kevin', 'Kevin', 'sea'));
+  const before = read();
+
+  for (const party of [{ version: 2 }, { version: 3 }, { version: 2, session: null, draft: {} }]) {
+    reactAct(() => result.current.importBackup(JSON.stringify({ app: 'guo-games', party })));
+    expect(result.current.problem).toMatch(/incomplete/i);
+    expect(result.current.state.session?.attendee).toBe('Kevin');
+    expect(read()).toBe(before);
+  }
+});

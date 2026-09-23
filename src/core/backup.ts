@@ -45,14 +45,20 @@ export function readBackup(text: string): State {
 }
 
 /**
- * Every field a current-version party carries. The schema gives all of them a
- * default, so a truncated v3 file would otherwise parse cleanly into an empty
- * party and restoring it would quietly wipe the vault it was meant to rescue.
+ * What a saved party looks like at each version this app can read.
  *
- * Older versions are exempt on purpose: filling in fields that did not exist
- * yet is exactly what migration is for.
+ * Every field in the schema carries a default, so a truncated file parses into
+ * a perfectly valid *empty* party. Restoring that would wipe the vault the
+ * backup was meant to rescue, and the settings block is the same trap one
+ * level down: an empty `settings` silently resets the organizer's closing
+ * date. So a backup has to arrive complete for the version it claims to be.
+ *
+ * Only fields genuinely introduced later are allowed to be absent, which is
+ * the whole job of migration. This strictness is deliberately scoped to
+ * backup files. A save already sitting on the device still migrates leniently,
+ * because there the alternative to a defaulted field is losing the save.
  */
-const REQUIRED_V3_KEYS = [
+const V2_PARTY_KEYS = [
   'session',
   'settings',
   'dinner',
@@ -63,20 +69,45 @@ const REQUIRED_V3_KEYS = [
   'missions',
   'vault',
   'future',
-  'feed',
 ] as const;
 
+const V2_SETTINGS_KEYS = ['hideRankings', 'awards'] as const;
+
+/** Version 3 added the shared activity feed and the configurable closing date. */
+const SHAPES: Record<number, { party: readonly string[]; settings: readonly string[] }> = {
+  2: { party: V2_PARTY_KEYS, settings: V2_SETTINGS_KEYS },
+  3: {
+    party: [...V2_PARTY_KEYS, 'feed'],
+    settings: [...V2_SETTINGS_KEYS, 'expiresAt'],
+  },
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+function incomplete(missing: string[]): Error {
+  return new Error(
+    `That backup is incomplete and was not restored, so nothing on this device changed. Missing: ${missing.join(', ')}.`,
+  );
+}
+
 function assertComplete(party: unknown): void {
-  if (typeof party !== 'object' || party === null) {
+  if (!isRecord(party)) {
     throw new Error('That backup does not contain a party.');
   }
-  if ((party as { version?: unknown }).version !== STATE_VERSION) return;
 
-  const missing = REQUIRED_V3_KEYS.filter((key) => !Object.hasOwn(party, key));
-  if (missing.length > 0) {
-    throw new Error(
-      `That backup is incomplete and was not restored, so nothing on this device changed. Missing: ${missing.join(', ')}.`,
-    );
+  const shape = SHAPES[party.version as number];
+  // An unrecognised version is not incomplete, it is unreadable. Let the
+  // schema say so, so the message matches the actual problem.
+  if (!shape) return;
+
+  const missing = shape.party.filter((key) => !Object.hasOwn(party, key));
+  if (missing.length > 0) throw incomplete(missing);
+
+  if (!isRecord(party.settings)) throw incomplete(['settings']);
+  const missingSettings = shape.settings.filter((key) => !Object.hasOwn(party.settings as object, key));
+  if (missingSettings.length > 0) {
+    throw incomplete(missingSettings.map((key) => `settings.${key}`));
   }
 }
 

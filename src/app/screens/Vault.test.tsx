@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
-import { beforeEach, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Media } from '../../core/media';
 
@@ -37,6 +37,8 @@ function renderVault() {
 
 const fileField = () => screen.getByLabelText(/Photo or voice note/i);
 const saveButton = () => screen.getByRole('button', { name: /save to the vault|resizing/i }) as HTMLButtonElement;
+
+afterEach(() => vi.unstubAllGlobals());
 
 beforeEach(() => {
   downscaleImage.mockReset();
@@ -79,25 +81,75 @@ it('ignores a slow resize that lands after a newer photo was picked', async () =
 });
 
 it('never attaches a resize that finishes after the memory was already saved', async () => {
-  const slow = deferred<Media>();
-  downscaleImage.mockReturnValue(slow.promise);
+  // Both picks are in flight before anything is saved, so the older promise is
+  // still genuinely pending at submit time. That is the case that used to
+  // reattach a stale photo to the next memory.
+  const older = deferred<Media>();
+  const newer = deferred<Media>();
+  downscaleImage.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise);
   renderVault();
   const user = userEvent.setup();
 
-  await user.type(screen.getByLabelText(/the story/i), 'A story with no photo.');
-  await user.upload(fileField(), new File(['a'], 'late.jpg', { type: 'image/jpeg' }));
-  slow.settle(jpeg('late.jpg'));
-  await waitFor(() => expect(saveButton().disabled).toBe(false));
+  await user.type(screen.getByLabelText(/the story/i), 'A story.');
+  await user.upload(fileField(), new File(['a'], 'older.jpg', { type: 'image/jpeg' }));
+  await user.upload(fileField(), new File(['b'], 'newer.jpg', { type: 'image/jpeg' }));
+
+  await act(async () => {
+    newer.settle(jpeg('newer.jpg'));
+  });
+  expect(screen.getByText(/newer\.jpg attached/i)).toBeTruthy();
+  expect(saveButton().disabled).toBe(false);
 
   await user.click(saveButton());
-  expect(run.mock.calls[0][0]).toMatchObject({ media: { name: 'late.jpg' } });
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(run.mock.calls[0][0]).toMatchObject({ media: { name: 'newer.jpg' } });
+  expect(screen.queryByText(/attached/i)).toBeNull();
 
-  // A second, still pending resize must not reattach to the next memory.
-  const stale = deferred<Media>();
-  downscaleImage.mockReturnValue(stale.promise);
-  await user.upload(fileField(), new File(['b'], 'stale.jpg', { type: 'image/jpeg' }));
+  // The older resize lands now, against a form that has already moved on.
+  await act(async () => {
+    older.settle(jpeg('older.jpg'));
+  });
+
+  expect(screen.queryByText(/older\.jpg attached/i)).toBeNull();
+  expect(screen.queryByText(/attached/i)).toBeNull();
+  expect(saveButton().disabled).toBe(false);
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
+it('never attaches a voice note whose read finishes after the memory was saved', async () => {
+  // Photos block Save while they resize, so a pending photo can never be
+  // submitted past. A voice note has no such flag: the read is asynchronous
+  // and Save stays enabled throughout. This is the case submit invalidation
+  // is actually there for.
+  let finishRead!: () => void;
+  class ControlledReader {
+    result: string | null = null;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    readAsDataURL() {
+      finishRead = () => {
+        this.result = 'data:audio/mpeg;base64,AAAA';
+        this.onload?.();
+      };
+    }
+  }
+  vi.stubGlobal('FileReader', ControlledReader);
+
+  renderVault();
+  const user = userEvent.setup();
+
+  await user.type(screen.getByLabelText(/the story/i), 'A story.');
+  await user.upload(fileField(), new File(['abc'], 'note.mp3', { type: 'audio/mpeg' }));
+  expect(saveButton().disabled).toBe(false);
+
   await user.click(saveButton());
-  stale.settle(jpeg('stale.jpg'));
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(run.mock.calls[0][0]).toMatchObject({ media: null });
 
-  await waitFor(() => expect(screen.queryByText(/stale\.jpg attached/i)).toBeNull());
+  await act(async () => {
+    finishRead();
+  });
+
+  expect(screen.queryByText(/note\.mp3 attached/i)).toBeNull();
+  expect(screen.queryByText(/attached/i)).toBeNull();
 });

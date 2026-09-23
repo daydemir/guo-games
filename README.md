@@ -151,6 +151,7 @@ Behaviour was built test-first. The red and green runs are kept in `artifacts/`:
 | `tdd-06-green-review-fixes.log` | the full suite passing after them |
 | `tdd-07-red-coderabbit.log` | the CodeRabbit-round tests failing before the fixes |
 | `tdd-08-green-coderabbit.log` | the full suite passing after them |
+| `tdd-09-green-final-review.log` | the full suite passing after the final review round |
 | `smoke-browser.log` | the 10 Playwright checks passing in Chromium at 390px and 1280px |
 
 Covered: join and spectator roles (including arrival dedupe), the three-pick cap,
