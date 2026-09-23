@@ -1,0 +1,11 @@
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26094:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8172:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:19634:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  01:41:02
+   Duration  683ms (environment 64%, setup 31%, transform 5%, worker 1%)

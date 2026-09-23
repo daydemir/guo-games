@@ -1,0 +1,29 @@
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  src/core/today.test.ts [ src/core/today.test.ts ]
+Error: Cannot find module './actions' imported from /Users/rolly/Build/worktrees/guo-games-mvp/src/core/today.test.ts
+ ❯ src/core/today.test.ts:2:1
+      1| import { expect, it } from 'vitest';
+      2| import { act } from './actions';
+       | ^
+      3| import { energyDipSpark, nextAction } from './selectors';
+      4| import { emptyState } from './state';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  src/core/vault.test.ts [ src/core/vault.test.ts ]
+Error: Cannot find module './content' imported from /Users/rolly/Build/worktrees/guo-games-mvp/src/core/vault.test.ts
+ ❯ src/core/vault.test.ts:2:1
+      1| import { expect, it } from 'vitest';
+      2| import { MAX_MEMORIES, MAX_STORY_CHARS } from './content';
+       | ^
+      3| import { act } from './actions';
+      4| import { organizerInbox, vaultEntries } from './selectors';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  11 failed (11)
+      Tests  no tests
+   Start at  01:37:12
+   Duration  440ms (setup 94%, transform 3%, worker 2%)
