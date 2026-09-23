@@ -14,10 +14,18 @@ export type Loaded = {
   state: State;
   /** A sentence to show the player when their save could not be used, else null. */
   problem: string | null;
+  /**
+   * True when this device has a save that exists but cannot be used. The app
+   * must not write over it until the player has chosen what to do, so this is
+   * a separate flag rather than something inferred from `problem`.
+   */
+  unreadable: boolean;
+  /** The bytes as found, so an unreadable save can still be downloaded. */
+  raw: string | null;
 };
 
 const UNREADABLE =
-  'The saved party on this device could not be read by this version of the app. Nothing has been deleted. Reset below to start a fresh party.';
+  'The saved party on this device could not be read by this version of the app.';
 
 /**
  * Reads the party off the device.
@@ -30,22 +38,34 @@ const UNREADABLE =
  */
 export function load(storage: StorageLike, now: number = Date.now()): Loaded {
   const raw = readRaw(storage);
-  if (raw === null) return { state: demoState(now), problem: null };
+  if (raw === null) return { state: demoState(now), problem: null, unreadable: false, raw: null };
 
+  const rescued = parseParty(raw);
+  if (!rescued) return { state: emptyState(), problem: UNREADABLE, unreadable: true, raw };
+
+  return { state: rescued, problem: null, unreadable: false, raw };
+}
+
+/**
+ * Reads one saved party, migrating it forward, or null if this build cannot
+ * make sense of it. Shared by the device save and by an imported backup file.
+ */
+export function parseParty(raw: string): State | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { state: emptyState(), problem: UNREADABLE };
+    return null;
   }
+  return parseSavedParty(parsed);
+}
 
+/** The same thing, for a value that has already been through JSON.parse. */
+export function parseSavedParty(parsed: unknown): State | null {
   const migrated = migrate(parsed);
-  if (!migrated) return { state: emptyState(), problem: UNREADABLE };
-
+  if (!migrated) return null;
   const result = stateSchema.safeParse(migrated);
-  if (!result.success) return { state: emptyState(), problem: UNREADABLE };
-
-  return { state: result.data, problem: null };
+  return result.success ? result.data : null;
 }
 
 /**

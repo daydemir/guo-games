@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
-mkdirSync('artifacts', { recursive: true });
+// Run output goes to the ignored directory. artifacts/ holds curated captures
+// that are committed, and a test run must never rewrite them.
+const SHOTS = 'test-results/screenshots';
+mkdirSync(SHOTS, { recursive: true });
 
-const shot = (name: string) => `artifacts/${name}.png`;
+const shot = (name: string) => `${SHOTS}/${name}.png`;
 
 test('a first-time visitor can join and reach their next action', async ({ page }, info) => {
   const errors: string[] = [];
@@ -59,6 +62,7 @@ test('the core loop works end to end in a real browser', async ({ page }, info) 
 
   await page.getByRole('link', { name: 'You', exact: true }).click();
   await page.getByLabel('Switch identity').selectOption('Nick');
+  await page.getByRole('button', { name: 'Apply' }).click();
   await page.getByRole('link', { name: 'Bounties' }).click();
   await page.getByRole('button', { name: /confirm for Kevin/ }).click();
   await expect(page.getByText('Kevin did it. Nick saw it.')).toBeVisible();
@@ -143,4 +147,52 @@ test('every control is labelled and every image has alternative text', async ({ 
     expect(await page.locator('h1').count(), `h1 count on ${name}`).toBe(1);
     expect(await page.locator('h2').count(), `h2 count on ${name}`).toBe(1);
   }
+});
+
+test('a full size phone photo is resized instead of rejected', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Party code').fill('GUO27');
+  await page.getByLabel('Who are you').selectOption('Kevin');
+  await page.getByRole('button', { name: 'Join the party' }).click();
+  await page.getByRole('link', { name: 'Vault' }).click();
+
+  // A noisy 3000x2000 JPEG, which is the shape of a real camera roll file and
+  // megabytes once encoded. The old build rejected this on sight.
+  const encoded = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 3000;
+    canvas.height = 2000;
+    const context = canvas.getContext('2d')!;
+    const pixels = context.createImageData(canvas.width, canvas.height);
+    for (let i = 0; i < pixels.data.length; i += 4) {
+      pixels.data[i] = (i * 7) % 255;
+      pixels.data[i + 1] = (i * 13) % 255;
+      pixels.data[i + 2] = (i * 29) % 255;
+      pixels.data[i + 3] = 255;
+    }
+    context.putImageData(pixels, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+  });
+
+  const buffer = Buffer.from(encoded, 'base64');
+  expect(buffer.byteLength).toBeGreaterThan(300_000);
+
+  await page
+    .getByLabel(/Photo or voice note/)
+    .setInputFiles({ name: 'IMG_4821.jpg', mimeType: 'image/jpeg', buffer });
+
+  await expect(page.getByText(/IMG_4821\.jpg attached, \d+ KB/)).toBeVisible();
+
+  await page.getByLabel('The story').fill('The view from the boat.');
+  await page.getByRole('button', { name: 'Save to the vault' }).click();
+  await expect(page.getByText('Saved to the vault.')).toBeVisible();
+  await expect(page.getByRole('img', { name: /Attached to a memory/ })).toBeVisible();
+});
+
+test('the offline shell only substitutes itself for page navigations', async ({ page }) => {
+  await page.goto('/');
+  const worker = await (await page.request.get('/sw.js')).text();
+
+  expect(worker).toContain("event.request.mode === 'navigate'");
+  expect(worker).toContain('Response.error()');
 });

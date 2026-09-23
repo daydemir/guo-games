@@ -36,3 +36,20 @@ it('stops the vault filling the browser storage quota', () => {
   expect(() => act(state, { type: 'submitMemory', about: 'Kevin', moment: 'Dinner', text: '', media: chunk }, NOW))
     .toThrow(/media budget/i);
 });
+
+import { MAX_IMAGE_EDGE, fitWithin } from './media';
+
+it('leaves an already small photo alone', () => {
+  expect(fitWithin(800, 600, MAX_IMAGE_EDGE)).toEqual({ width: 800, height: 600 });
+});
+
+it('scales a phone photo down by its long edge, keeping the aspect ratio', () => {
+  expect(fitWithin(4032, 3024, 1280)).toEqual({ width: 1280, height: 960 });
+  expect(fitWithin(3024, 4032, 1280)).toEqual({ width: 960, height: 1280 });
+});
+
+it('never returns a zero dimension for an extreme panorama', () => {
+  const fitted = fitWithin(12000, 3, 1280);
+  expect(fitted.width).toBe(1280);
+  expect(fitted.height).toBeGreaterThanOrEqual(1);
+});

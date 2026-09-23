@@ -38,12 +38,21 @@ it('lets only organizers settle, makes settlement final, and closes the pick', (
   expect(() => act(as('Kevin', state), { type: 'pick', id: 'flights', choice: 'no' }, NOW)).toThrow(/settled/i);
 });
 
-it('lets anyone void an uncomfortable prediction, which removes its points', () => {
+
+it('lets anyone void an open prediction, because opting out has to stay easy', () => {
+  const state = act(as('Kevin'), { type: 'pick', id: 'flights', choice: 'yes' }, NOW);
+  expect(act(as('Jack', state), { type: 'voidPrediction', id: 'flights' }, NOW).results.flights).toBe('void');
+});
+
+it('stops a bystander erasing a settled prediction, but lets an organizer do it', () => {
   let state = act(as('Kevin'), { type: 'pick', id: 'flights', choice: 'yes' }, NOW);
   state = act(as('Deniz', state), { type: 'settle', id: 'flights', result: 'yes' }, NOW);
   expect(pointsFor(scores(state), 'Kevin')).toBe(10);
 
-  state = act(as('Jack', state), { type: 'voidPrediction', id: 'flights' }, NOW);
-  expect(state.results.flights).toBe('void');
-  expect(pointsFor(scores(state), 'Kevin')).toBe(0);
+  expect(() => act(as('Jack', state), { type: 'voidPrediction', id: 'flights' }, NOW)).toThrow(/organizer/i);
+  expect(pointsFor(scores(state), 'Kevin')).toBe(10);
+
+  const voided = act(as('Nick', state), { type: 'voidPrediction', id: 'flights' }, NOW);
+  expect(voided.results.flights).toBe('void');
+  expect(pointsFor(scores(voided), 'Kevin')).toBe(0);
 });

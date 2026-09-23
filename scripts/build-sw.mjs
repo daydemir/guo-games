@@ -5,8 +5,11 @@
  */
 import { readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const dist = new URL('../dist/', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: pathname keeps percent-encoding, so a
+// checkout under a path with a space resolved to a directory that is not there.
+const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const assets = readdirSync(join(dist, 'assets')).map((name) => `/assets/${name}`);
 const shell = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/fonts/fraunces.ttf', ...assets];
 const version = `guo-games-${Date.now().toString(36)}`;
@@ -47,7 +50,12 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/index.html'));
+        .catch(() => {
+          // Only a page navigation can sensibly fall back to the app shell.
+          // Handing index.html to an <img> or an <audio> just fails oddly.
+          if (event.request.mode === 'navigate') return caches.match('/index.html');
+          return Response.error();
+        });
     }),
   );
 });

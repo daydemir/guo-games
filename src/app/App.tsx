@@ -4,6 +4,9 @@ import { useParty } from './useParty';
 import { Chrome } from './Chrome';
 import type { Tab } from './Chrome';
 import { JoinScreen } from './JoinScreen';
+import { Recovery } from './Recovery';
+import { downloadText } from './download';
+import { backupFilename } from '../core/backup';
 import { Today } from './screens/Today';
 import { Predictions } from './screens/Predictions';
 import { Draft } from './screens/Draft';
@@ -33,11 +36,18 @@ const TABS: Tab[] = [
 export function App() {
   const party = useParty();
   const [tab, setTab] = useState('today');
-  const { state, problem, note, dismiss, run, signIn, reset, now } = party;
+  const { state, problem, note, dismiss, run, signIn, reset, now, recovery } = party;
   const locked = isReadOnly(state, now);
 
-  // A message is about the thing you just did, so it should not follow you.
+  // A message is about the thing you just did, so it should not follow you to
+  // the next screen. It must not run on mount, though: that used to wipe the
+  // "your save is unreadable" warning before anybody could read it.
+  const firstTab = useRef(true);
   useEffect(() => {
+    if (firstTab.current) {
+      firstTab.current = false;
+      return;
+    }
     dismiss();
   }, [tab, dismiss]);
 
@@ -53,6 +63,17 @@ export function App() {
     }
     if (signedIn) document.getElementById('main')?.focus();
   }, [signedIn, tab]);
+
+  if (recovery) {
+    return (
+      <Recovery
+        message={recovery.message}
+        onDownload={() => downloadText(backupFilename(), party.exportBackup())}
+        onImport={party.importBackup}
+        onReset={reset}
+      />
+    );
+  }
 
   if (!state.session) {
     return <JoinScreen onJoin={signIn} problem={problem} />;
@@ -100,7 +121,15 @@ export function App() {
       ) : null}
       {tab === 'dinner' ? <Dinner state={state} locked={locked} now={now} run={run} /> : null}
       {tab === 'feed' ? <Feed state={state} now={now} /> : null}
-      {tab === 'you' ? <You state={state} locked={locked} run={run} signIn={signIn} reset={reset} /> : null}
+      {tab === 'you' ? <You
+          state={state}
+          locked={locked}
+          run={run}
+          signIn={signIn}
+          reset={reset}
+          exportBackup={party.exportBackup}
+          importBackup={party.importBackup}
+        /> : null}
     </Chrome>
   );
 }

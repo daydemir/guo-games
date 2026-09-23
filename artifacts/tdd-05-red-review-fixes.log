@@ -1,0 +1,29 @@
+     79|   expect(loaded.raw).toBe('{{{');
+     80|   expect(loaded.problem).toMatch(/saved party/i);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯
+
+ FAIL  src/core/storage.test.ts > does not call an empty device unreadable
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+undefined
+
+ ❯ src/core/storage.test.ts:85:28
+     83| it('does not call an empty device unreadable', () => {
+     84|   const fresh = load(memoryStorage(), NOW);
+     85|   expect(fresh.unreadable).toBe(false);
+       |                            ^
+     86|   expect(fresh.raw).toBeNull();
+     87|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯
+
+
+ Test Files  6 failed | 7 passed (13)
+      Tests  8 failed | 66 passed (74)
+   Start at  02:12:59
+   Duration  942ms (setup 36%, tests 19%, import 19%, transform 17%, environment 8%, worker 1%)

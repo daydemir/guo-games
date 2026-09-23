@@ -37,3 +37,19 @@ it('never puts bounty detail in the shared feed before it is confirmed', () => {
   const state = act(as('Kevin'), { type: 'claim', id: 'callback' }, NOW);
   expect(state.feed.some((event) => event.text.includes('favorite Kevin memory'))).toBe(false);
 });
+
+it('lets anyone void a claim that is still open', () => {
+  const state = act(as('Kevin'), { type: 'claim', id: 'callback' }, NOW);
+  expect(act(as('Jack', state), { type: 'voidBounty', id: 'callback' }, NOW).bounties.callback?.status).toBe('void');
+});
+
+it('stops a bystander erasing a confirmed bounty, but lets its owner or an organizer', () => {
+  let state = act(as('Kevin'), { type: 'claim', id: 'callback' }, NOW);
+  state = act(as('Nick', state), { type: 'confirm', id: 'callback' }, NOW);
+
+  expect(() => act(as('Jack', state), { type: 'voidBounty', id: 'callback' }, NOW)).toThrow(/whoever did it/i);
+  expect(pointsFor(scores(state), 'Kevin')).toBe(5);
+
+  expect(act(as('Kevin', state), { type: 'voidBounty', id: 'callback' }, NOW).bounties.callback?.status).toBe('void');
+  expect(act(as('Deniz', state), { type: 'voidBounty', id: 'callback' }, NOW).bounties.callback?.status).toBe('void');
+});

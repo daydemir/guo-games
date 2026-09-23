@@ -27,6 +27,12 @@ export const MEDIA_TYPES = [
 ] as const;
 
 export const MAX_FILE_BYTES = 300_000;
+/**
+ * The longest edge a stored photo is allowed to have. A phone camera produces
+ * a 4032px, multi-megabyte JPEG, which could never fit the byte budget, so the
+ * app resizes before it validates rather than rejecting every real photo.
+ */
+export const MAX_IMAGE_EDGE = 1280;
 /** Total base64 the vault will hold before it asks for text instead. */
 export const MEDIA_BUDGET_CHARS = 1_400_000;
 
@@ -62,3 +68,18 @@ export function decodedBytes(encoded: string): number {
 }
 
 export const mediaWeight = (media: Media | null) => media?.data.length ?? 0;
+
+/**
+ * Fits a photo inside `maxEdge` on its long side, keeping the aspect ratio and
+ * never rounding a dimension down to zero. Kept pure and here so the sizing
+ * rule can be tested without a canvas.
+ */
+export function fitWithin(width: number, height: number, maxEdge: number = MAX_IMAGE_EDGE) {
+  const longest = Math.max(width, height);
+  if (longest <= maxEdge) return { width, height };
+  const scale = maxEdge / longest;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}

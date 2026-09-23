@@ -70,3 +70,22 @@ it('clears back to a fresh demo party', () => {
   expect(storage.getItem(STORAGE_KEY)).toBeNull();
   expect(load(storage, NOW).state.session).toBeNull();
 });
+
+it('flags an unreadable save and hands back the raw text so it can be rescued', () => {
+  const storage = memoryStorage('{{{');
+  const loaded = load(storage, NOW);
+
+  expect(loaded.unreadable).toBe(true);
+  expect(loaded.raw).toBe('{{{');
+  expect(loaded.problem).toMatch(/saved party/i);
+});
+
+it('does not call an empty device unreadable', () => {
+  const fresh = load(memoryStorage(), NOW);
+  expect(fresh.unreadable).toBe(false);
+  expect(fresh.raw).toBeNull();
+
+  const good = memoryStorage();
+  save(good, as('Kevin'));
+  expect(load(good, NOW).unreadable).toBe(false);
+});

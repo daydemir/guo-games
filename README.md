@@ -22,7 +22,9 @@ npm run smoke        # Playwright smoke tests against the production build
 ```
 
 `npm run smoke` builds nothing on its own. Run `npm run build` first; the
-Playwright config starts `vite preview` for you.
+Playwright config starts `vite preview` for you. Screenshots from a run land in
+`test-results/`, which is ignored; the curated captures in `artifacts/` are
+committed and a run never rewrites them.
 
 ## Architecture
 
@@ -58,26 +60,39 @@ keeps an unreadable save from being overwritten on mount.
   passed around a table, and it is stated in the interface.
 - **Points only.** Nothing accepts an amount, a stake or a payout.
 - **Opt-in, always.** Nothing asks for a dangerous stunt, an ocean dare, a
-  drinking challenge or pressure on a stranger. Anyone can void any item with no
-  points lost. Spectator is a real role.
+  drinking challenge or pressure on a stranger. Anyone can void anything that is
+  still open, with no points lost and no explanation owed. Once a prediction is
+  settled or a bounty is confirmed it holds other people's points, so undoing it
+  is limited to an organizer (and, for a bounty, the person who did it).
+  Spectator is a real role.
 - **Private stays private.** Mission text, vault stories and sealed notes never
   reach the shared feed. There are tests that assert exactly this.
 - **The kill switch is real.** After `settings.expiresAt`, every mutation is
   refused and the app is a read-only recap. Organizers can move the date forward
   while the trip is live, and never into the past.
 
-### Privacy warning
+### Privacy and durability warning
 
 Everything you type, photograph or record stays inside one browser on one device.
 It is not encrypted, it is not backed up, and it is not uploaded anywhere. Anyone
 who can unlock the device can read the whole vault, including the organizer inbox.
-Clearing site data destroys it permanently, and there is no copy anywhere else.
+
+A browser is not durable storage. Clearing site data destroys the party instantly,
+and iOS evicts storage for a site or installed web app that has not been opened in
+roughly seven days. **Export a backup from the You tab** before the trip and again
+after dinner; that file is the only copy that survives the browser.
+
+If the save on a device becomes unreadable, the app refuses to start the game and
+refuses to write anything. It offers three explicit ways out: download the raw
+bytes, restore a backup file, or delete and start fresh. Nothing is overwritten
+until you choose.
 
 ## Configuration
 
 | What | Where | Default |
 | --- | --- | --- |
 | Party code | `PARTY_CODE` in `src/core/content.ts` | `GUO27` |
+| Photo long edge | `MAX_IMAGE_EDGE` in `src/core/media.ts` | 1280px, resized on upload |
 | Roster and organizers | `ATTENDEES`, `ORGANIZERS` | seven names, Deniz and Nick organize |
 | Kill switch | `DEFAULT_EXPIRES_AT`, editable in the app by an organizer | `2027-07-06T10:00:00Z` |
 | Sealed notes open | `FUTURE_OPENS_AT` | `2032-07-06T10:00:00Z` |
@@ -132,14 +147,19 @@ Behaviour was built test-first. The red and green runs are kept in `artifacts/`:
 | `tdd-02-green-domain.log` | the same 55 domain tests passing |
 | `tdd-03-red-app.log` | the screen tests failing before the React app existed |
 | `tdd-04-green-all.log` | the full suite passing |
+| `tdd-05-red-review-fixes.log` | the review-fix tests failing before the fixes |
+| `tdd-06-green-review-fixes.log` | the full suite passing after them |
 | `smoke-browser.log` | the 10 Playwright checks passing in Chromium at 390px and 1280px |
 
-Covered: join and spectator roles, the three-pick cap, organizer-only settling,
-settlement finality, void with no penalty, duplicate fish prevention and release,
-one-bounty-at-a-time, witness-must-be-someone-else, mission privacy and opt-out,
-vault visibility and the organizer inbox, media type, size and budget limits,
-award card assignment, sealed notes, the kill switch across every action, and
-storage migration, defaults and corruption refusal.
+Covered: join and spectator roles (including arrival dedupe), the three-pick cap,
+organizer-only settling, settlement finality, who may void an open versus a
+settled item, duplicate fish prevention and release, one-bounty-at-a-time,
+witness-must-be-someone-else, mission privacy and opt-out, vault visibility and
+the organizer inbox, media type, size and budget limits, photo downscaling
+arithmetic, award card assignment, sealed notes, the kill switch across every
+action, storage migration and defaults, refusing to overwrite an unreadable save,
+the recovery and backup round trip, deliberate identity switching, and the
+closing-date guard.
 
 Screenshots at 390px and 1280px are in `artifacts/`.
 

@@ -60,8 +60,10 @@ export function join(
     throw new Error(`Pick who you are, and a name of 1 to ${MAX_NAME_CHARS} characters.`);
   }
 
-  const alreadyHere = state.feed.some((event) => event.actor === attendee && event.text.includes('joined'));
+  // Dedupe on the actor's own arrival line. Matching on the word "joined"
+  // missed spectators entirely, so every switch back re-announced them.
   const arrival = attendee === 'Spectator' ? 'A spectator is watching.' : `${attendee} joined the party.`;
+  const alreadyHere = state.feed.some((event) => event.actor === attendee && event.text === arrival);
 
   return {
     ...state,
@@ -116,6 +118,10 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
 
     case 'voidPrediction': {
       const prediction = mustFindPrediction(action.id);
+      // Opting out of something uncomfortable has to stay frictionless, so an
+      // open market can be voided by anyone. Once it is settled it holds other
+      // people's points, and erasing those is an organizer's call.
+      if (state.results[action.id]) organizerOnly(state, 'void a settled prediction');
       next.results[action.id] = 'void';
       log(`${prediction.title} was voided. No points lost.`);
       break;
@@ -159,6 +165,11 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       const bounty = mustFindBounty(action.id);
       const held = state.bounties[action.id];
       if (!held) throw new Error('Nothing to void here yet.');
+      // Same shape as a prediction: an open claim is anyone's to wave off, a
+      // confirmed one belongs to the person who did it.
+      if (held.status === 'confirmed' && held.owner !== me && !isOrganizerIdentity(me)) {
+        throw new Error('Only whoever did it, or an organizer, can undo a confirmed bounty.');
+      }
       next.bounties[action.id] = { ...held, status: 'void' };
       log(`${bounty.title} was voided. No points lost.`);
       break;

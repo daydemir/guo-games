@@ -37,3 +37,14 @@ describe('joining the party', () => {
     expect(as('Kevin', joined).feed).toHaveLength(1);
   });
 });
+
+it('logs a spectator arrival once however many times the phone switches back', () => {
+  let state = as('Spectator');
+  const spectatorLines = (s: typeof state) => s.feed.filter((event) => event.actor === 'Spectator').length;
+  expect(spectatorLines(state)).toBe(1);
+
+  state = as('Kevin', state);
+  state = as('Spectator', state);
+  state = as('Spectator', state);
+  expect(spectatorLines(state)).toBe(1);
+});

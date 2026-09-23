@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { ATTENDEES, MAX_MEMORIES, MAX_STORY_CHARS, MOMENTS, isAttendee } from '../../core/content';
 import type { Attendee, Moment } from '../../core/content';
 import { MAX_FILE_BYTES, isImage, validateMedia } from '../../core/media';
+import { downscaleImage } from '../downscale';
 import type { Media } from '../../core/media';
 import { isOrganizer, me, organizerInbox, vaultEntries } from '../../core/selectors';
 import { relativeTime } from '../../core/time';
@@ -96,8 +97,9 @@ export function Vault({
       ) : null}
 
       <p className="fineprint">
-        Photos and voice notes are stored inside this browser as text, never uploaded. Anyone holding this
-        device can open them. Keep each file under 300 KB.
+        Photos and voice notes are stored inside this browser as text, never uploaded. Photos are resized
+        to fit; voice notes need to be under 300 KB. Anyone holding this device can open them, and a
+        browser can evict the lot, so export a backup from the You tab.
       </p>
     </Screen>
   );
@@ -156,11 +158,25 @@ function MemoryForm({
   const fileInput = useRef<HTMLInputElement>(null);
 
   function pickFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file) return setMedia(null);
+
+    // Photos get resized first. Judging a camera roll JPEG on its original
+    // size rejected every real photo before it had a chance to fit.
+    if (file.type.startsWith('image/')) {
+      downscaleImage(file)
+        .then(setMedia)
+        .catch((error: unknown) => {
+          onProblem(error instanceof Error ? error.message : 'That photo could not be read.');
+          input.value = '';
+        });
+      return;
+    }
+
     if (file.size > MAX_FILE_BYTES) {
-      onProblem('Keep each file under 300 KB. A short voice note or a resized photo works well.');
-      event.target.value = '';
+      onProblem('Keep voice notes under 300 KB. Photos are resized for you.');
+      input.value = '';
       return;
     }
     const reader = new FileReader();
@@ -172,7 +188,7 @@ function MemoryForm({
         setMedia(candidate);
       } catch (error) {
         onProblem(error instanceof Error ? error.message : 'That file could not be read.');
-        event.target.value = '';
+        input.value = '';
       }
     };
     reader.readAsDataURL(file);
@@ -242,7 +258,11 @@ function MemoryForm({
           accept="image/jpeg,image/png,image/webp,audio/*"
           onChange={pickFile}
         />
-        <p className="hint">{media ? `${media.name} attached.` : 'Under 300 KB. Stays on this device.'}</p>
+        <p className="hint">
+          {media
+            ? `${media.name} attached, ${Math.round(media.bytes / 1024)} KB.`
+            : 'Photos are resized for you. Voice notes stay under 300 KB. Nothing leaves this device.'}
+        </p>
       </div>
 
       <button className="primary" type="submit" disabled={full}>
