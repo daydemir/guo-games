@@ -69,7 +69,7 @@ keeps an unreadable save from being overwritten on mount.
   passed around a table, and it is stated in the interface.
 - **Points only.** Nothing accepts an amount, a stake or a payout.
 - **Opt-in, always.** Nothing asks for a dangerous stunt, an ocean dare, a
-  drinking challenge or pressure on a stranger. Anyone can void anything that is
+  drinking challenge or pressure on a stranger. Anyone playing can void anything that is
   still open, with no points lost and no explanation owed. Once a prediction is
   settled or a bounty is confirmed it holds other people's points, so undoing it
   is limited to an organizer (and, for a bounty, the person who did it).

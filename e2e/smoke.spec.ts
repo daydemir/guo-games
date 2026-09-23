@@ -243,4 +243,8 @@ test('the offline shell only substitutes itself for page navigations', async ({ 
 
   expect(worker).toContain("event.request.mode === 'navigate'");
   expect(worker).toContain('Response.error()');
+  // Answers come from this build's cache, and activation clears only this
+  // app's old caches, never another app's on the same origin.
+  expect(worker).toContain('caches.open(CACHE).then((cache) => cache.match(request');
+  expect(worker).toContain("key.startsWith('guo-games-') && key !== CACHE");
 });

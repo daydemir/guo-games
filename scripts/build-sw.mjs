@@ -27,7 +27,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      // Only this app's own old shells. Another app on the same origin keeps its caches.
+      // Only this app's own old shells, including the first build's
+      // guo-games-shell-v1. Another app on the same origin keeps its caches.
       .then((keys) =>
         Promise.all(keys.filter((key) => key.startsWith('guo-games-') && key !== CACHE).map((key) => caches.delete(key))),
       )
@@ -42,13 +43,17 @@ self.addEventListener('activate', (event) => {
 // module script request (which carries an Origin header) miss the entry that
 // install cached without one, and the app then opens offline as a blank page.
 // Every shell URL is content-hashed or tiny, so ignoring Vary is safe here.
+// Lookups go to this build's cache only, so no older or unrelated cache on the
+// origin can answer with a stale index.html.
+const lookup = (request) => caches.open(CACHE).then((cache) => cache.match(request, { ignoreVary: true }));
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request, { ignoreVary: true }).then((hit) => {
+    lookup(event.request).then((hit) => {
       if (hit) return hit;
       return fetch(event.request)
         .then((response) => {
@@ -61,7 +66,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // Only a page navigation can sensibly fall back to the app shell.
           // Handing index.html to an <img> or an <audio> just fails oddly.
-          if (event.request.mode === 'navigate') return caches.match('/index.html', { ignoreVary: true });
+          if (event.request.mode === 'navigate') return lookup('/index.html');
           return Response.error();
         });
     }),

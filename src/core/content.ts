@@ -164,7 +164,7 @@ export const GUARDRAILS: readonly string[] = [
   'Everything here is opt-in. Skipping is a normal move.',
   'Nothing asks for a dangerous stunt, an ocean dare, a drinking challenge, or pressure on a stranger.',
   'Teasing comes from shared history, never from private exposure.',
-  'Anyone can void anything still open, with no points lost and no explanation owed.',
+  'Anyone playing can void anything still open, with no points lost and no explanation owed.',
   'Spectator is a real role. You can watch the whole day and never pick a thing.',
 ];
 
