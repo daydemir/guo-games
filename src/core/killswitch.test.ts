@@ -39,7 +39,10 @@ it('refuses every mutation after the kill switch, including organizer controls',
 it('still lets a phone pick an identity so the recap is readable', () => {
   const state = as('Deniz');
   const closesAt = Date.parse(state.settings.expiresAt);
-  expect(join(state, 'GUO27', 'Kevin', 'Kev', 'coral', closesAt).session?.attendee).toBe('Kevin');
+  const joined = join(state, 'GUO27', 'Kevin', 'Kev', 'coral', closesAt);
+  expect(joined.session?.attendee).toBe('Kevin');
+  // The recap is read-only for everyone, so arriving leaves the feed alone.
+  expect(joined.feed).toEqual(state.feed);
 });
 
 it('lets an organizer move the closing date but never into the past', () => {

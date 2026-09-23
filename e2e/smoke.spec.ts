@@ -35,15 +35,14 @@ test('the core loop works end to end in a real browser', async ({ page }, info) 
   await page.getByLabel('Who are you').selectOption('Kevin');
   await page.getByRole('button', { name: 'Join the party' }).click();
 
-  // Predictions: an already settled market offers no buttons, an open one does.
-  await page.getByRole('link', { name: 'Predictions' }).click();
+  // Picks: an already settled market offers no buttons, an open one does.
+  await page.getByRole('link', { name: 'Picks', exact: true }).click();
   await expect(page.getByRole('group', { name: /Does the whole crew land/ })).toHaveCount(0);
   await page.getByRole('group', { name: /Do we see three different species/ }).getByRole('button', { name: 'yes' }).click();
   await expect(page.getByText('You called yes.')).toBeVisible();
   await page.screenshot({ path: shot(`${info.project.name}-03-predictions`), fullPage: true });
 
-  // Dock draft: a taken species is unavailable, a free one is claimable.
-  await page.getByRole('link', { name: 'Draft', exact: true }).click();
+  // Dock draft, on the same screen: a taken species is unavailable, a free one is claimable.
   await expect(page.getByRole('button', { name: /^Ono/ })).toBeDisabled();
   await page.getByRole('button', { name: /^Mahi-mahi/ }).click();
   await expect(page.getByText('Mahi-mahi is yours.')).toBeVisible();
@@ -54,13 +53,15 @@ test('the core loop works end to end in a real browser', async ({ page }, info) 
   await page.getByRole('button', { name: 'Show my mission' }).click();
   await expect(page.getByTestId('mission-text')).toBeVisible();
   await page.getByRole('button', { name: 'I will do this' }).click();
+  await page.screenshot({ path: shot(`${info.project.name}-05-mission`), fullPage: true });
 
   // Bounty claim, then a witness confirms from the same device.
   await page.getByRole('link', { name: 'Bounties' }).click();
   await page.getByRole('button', { name: /Claim The Callback/ }).click();
   await expect(page.getByText('Kevin is carrying this one.')).toBeVisible();
+  await page.screenshot({ path: shot(`${info.project.name}-06-bounties`), fullPage: true });
 
-  await page.getByRole('link', { name: 'You', exact: true }).click();
+  await page.getByRole('link', { name: /^You:/ }).click();
   await page.getByLabel('Switch identity').selectOption('Nick');
   await page.getByRole('button', { name: 'Apply' }).click();
   await page.getByRole('link', { name: 'Bounties' }).click();
@@ -72,18 +73,25 @@ test('the core loop works end to end in a real browser', async ({ page }, info) 
   await page.getByLabel('The story').fill('Nick brought a spare charger for everyone, again.');
   await page.getByRole('button', { name: 'Save to the vault' }).click();
   await expect(page.getByText('Saved to the vault.')).toBeVisible();
+  await page.screenshot({ path: shot(`${info.project.name}-09-vault`), fullPage: true });
 
   // Dinner: an organizer opens it and the award cards print.
   await page.getByRole('link', { name: 'Dinner' }).click();
   await page.getByRole('button', { name: 'Open dinner' }).click();
   await expect(page.getByRole('heading', { name: 'The Quiet Confirm' })).toBeVisible();
+  // The organizer reads one story out, and it lands on the table for everyone.
+  await page.getByRole('button', { name: 'Read this out' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Read out at dinner' })).toHaveCount(1);
   await page.screenshot({ path: shot(`${info.project.name}-07-dinner`), fullPage: true });
 
   // The whole party survives a reload, because it lives in localStorage.
   await page.reload();
-  await page.getByRole('link', { name: 'Feed' }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect(page.getByText('Nick confirmed The Callback for Kevin.')).toBeVisible();
-  await page.screenshot({ path: shot(`${info.project.name}-08-feed`), fullPage: true });
+  await page.screenshot({ path: shot(`${info.project.name}-08-today-feed`), fullPage: true });
+
+  await page.getByRole('link', { name: /^You:/ }).click();
+  await page.screenshot({ path: shot(`${info.project.name}-10-you`), fullPage: true });
 });
 
 test('the app ships an installable manifest and an offline shell', async ({ page }) => {
@@ -120,8 +128,11 @@ test('every control is labelled and every image has alternative text', async ({ 
   await page.getByLabel('Who are you').selectOption('Deniz');
   await page.getByRole('button', { name: 'Join the party' }).click();
 
-  for (const name of ['Today', 'Predictions', 'Draft', 'Bounties', 'Mission', 'Vault', 'Dinner', 'Feed', 'You']) {
-    await page.getByRole('link', { name, exact: true }).click();
+  for (const name of ['Today', 'Picks', 'Bounties', 'Mission', 'Vault', 'Dinner', 'You']) {
+    await (name === 'You'
+      ? page.getByRole('link', { name: /^You:/ })
+      : page.getByRole('link', { name, exact: true })
+    ).click();
 
     const unlabelled = await page.locator('input:not([type=hidden]), select, textarea').evaluateAll((nodes) =>
       nodes
@@ -187,6 +198,43 @@ test('a full size phone photo is resized instead of rejected', async ({ page }) 
   await page.getByRole('button', { name: 'Save to the vault' }).click();
   await expect(page.getByText('Saved to the vault.')).toBeVisible();
   await expect(page.getByRole('img', { name: /Attached to a memory/ })).toBeVisible();
+});
+
+test('the whole app opens with no network once it has been visited', async ({ page, context, browserName }) => {
+  // Playwright's WebKit cannot emulate offline for a page a service worker
+  // controls: reload fails inside the engine before the worker is consulted.
+  // Chromium exercises the same worker code, so it carries this check.
+  test.skip(browserName === 'webkit', 'Playwright WebKit cannot go offline under a service worker');
+  await page.goto('/');
+  // Wait until the worker has installed the shell and controls the page.
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) => navigator.serviceWorker.addEventListener('controllerchange', resolve));
+    }
+  });
+
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByLabel('Who are you').selectOption('Kevin');
+  await page.getByRole('button', { name: 'Join the party' }).click();
+  await expect(page.getByRole('heading', { name: 'Call one thing' })).toBeVisible();
+
+  // A deep link with no signal still gets the shell rather than an error page.
+  await page.goto('/dinner');
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('a spectator can follow along with nothing to tap that would be refused', async ({ page }, info) => {
+  await page.goto('/');
+  await page.getByLabel('Who are you').selectOption('Spectator');
+  await page.getByRole('button', { name: 'Join the party' }).click();
+  await expect(page.getByRole('heading', { name: 'You are watching' })).toBeVisible();
+  await page.screenshot({ path: shot(`${info.project.name}-11-spectator`), fullPage: true });
+
+  await page.getByRole('link', { name: 'Picks', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'yes', exact: true })).toHaveCount(0);
 });
 
 test('the offline shell only substitutes itself for page navigations', async ({ page }) => {

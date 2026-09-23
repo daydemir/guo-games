@@ -17,7 +17,7 @@ export function Bounties({
 }: {
   state: State;
   locked: boolean;
-  run: (action: Action, note?: string) => void;
+  run: (action: Action, note?: string) => boolean;
 }) {
   const who = me(state);
   const playing = isAttendee(who) && !locked;

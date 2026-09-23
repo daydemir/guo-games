@@ -79,3 +79,45 @@ it('leaves a healthy device untouched when a truncated backup is imported', () =
     expect(read()).toBe(before);
   }
 });
+
+it('keeps the last saved state on screen when a write fails, so nothing appears saved that is not', () => {
+  const { storage, read } = device();
+  const { result } = renderHook(() => useParty(storage));
+  reactAct(() => void result.current.signIn('GUO27', 'Kevin', 'Kevin', 'sea'));
+  const before = read();
+
+  storage.setItem = () => {
+    throw new DOMException('quota', 'QuotaExceededError');
+  };
+  let ok = true;
+  reactAct(() => {
+    ok = result.current.run({ type: 'draft', fish: 'mahimahi' });
+  });
+
+  expect(ok).toBe(false);
+  expect(result.current.problem).toMatch(/storage is full/i);
+  expect(result.current.state.draft.Kevin).toBeUndefined();
+  expect(read()).toBe(before);
+});
+
+it('reports whether a command worked, so a form knows when it may clear', () => {
+  const { storage } = device();
+  const { result } = renderHook(() => useParty(storage));
+  let joined = false;
+  reactAct(() => {
+    joined = result.current.signIn('GUO27', 'Kevin', 'Kevin', 'sea');
+  });
+  expect(joined).toBe(true);
+
+  let sealed = true;
+  reactAct(() => {
+    sealed = result.current.run({ type: 'sealFuture', text: '' });
+  });
+  expect(sealed).toBe(false);
+});
+
+it('says so plainly when the browser will not store anything', () => {
+  const { result } = renderHook(() => useParty(null));
+  expect(result.current.problem).toMatch(/not saving/i);
+  expect(result.current.recovery).toBeNull();
+});

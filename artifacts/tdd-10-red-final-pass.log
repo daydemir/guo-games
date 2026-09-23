@@ -1,0 +1,21 @@
+   × still lets a phone pick an identity so the recap is readable 8ms
+   × treats a closing date it cannot read as an unreadable save, not an open trip 7ms
+   × frees a pick slot once one of your predictions settles or is voided 7ms
+   × keeps the last saved state on screen when a write fails, so nothing appears saved that is not 3ms
+   × reports whether a command worked, so a form knows when it may clear 1ms
+   × says so plainly when the browser will not store anything 1ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/app/useParty.test.ts > keeps the last saved state on screen when a write fails, so nothing appears saved that is not
+AssertionError: expected undefined to be false // Object.is equality
+ FAIL  src/app/useParty.test.ts > reports whether a command worked, so a form knows when it may clear
+AssertionError: expected undefined to be true // Object.is equality
+ FAIL  src/app/useParty.test.ts > says so plainly when the browser will not store anything
+TypeError: .toMatch() expects to receive a string, but got object
+ FAIL  src/core/killswitch.test.ts > still lets a phone pick an identity so the recap is readable
+AssertionError: expected [ { …(4) }, { …(4) } ] to deeply equal [ { …(4) } ]
+ FAIL  src/core/predictions.test.ts > frees a pick slot once one of your predictions settles or is voided
+AssertionError: expected +0 to be 2 // Object.is equality
+ FAIL  src/core/storage.test.ts > treats a closing date it cannot read as an unreadable save, not an open trip
+AssertionError: expected false to be true // Object.is equality
+ Test Files  4 failed | 9 passed (13)
+      Tests  6 failed | 81 passed (87)

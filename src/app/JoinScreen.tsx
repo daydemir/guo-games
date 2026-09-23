@@ -35,8 +35,8 @@ export function JoinScreen({
         </p>
         <h1>{PARTY_NAME}</h1>
         <p className="lede">
-          A shared attention engine for one day in Maui. A few calls, one quiet act, phone away, and a
-          long dinner at the end of it.
+          One day in Maui, lightly organized. A few calls, one quiet act, phone away, and a long dinner
+          where it all gets settled.
         </p>
       </header>
 
@@ -67,7 +67,9 @@ export function JoinScreen({
               </option>
             ))}
           </select>
-          <p className="hint">Spectator is a real choice. You can watch the whole day and never pick a thing.</p>
+          <p className="hint">
+            Pick your own name. Spectator is a real choice too: watch the whole day and never pick a thing.
+          </p>
         </div>
 
         <div className="field">

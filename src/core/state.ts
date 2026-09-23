@@ -56,8 +56,14 @@ export const settingsSchema = z.object({
   /** Standings stay sealed until dinner unless an organizer opens them early. */
   hideRankings: z.boolean().default(true),
   awards: z.enum(['stories', 'points']).default('stories'),
-  /** The date kill switch. */
-  expiresAt: z.string().default(DEFAULT_EXPIRES_AT),
+  /**
+   * The date kill switch. A value that does not parse would compare as NaN and
+   * leave the trip open forever, so it makes the save unreadable instead.
+   */
+  expiresAt: z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)))
+    .default(DEFAULT_EXPIRES_AT),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 

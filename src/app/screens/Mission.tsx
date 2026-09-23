@@ -16,7 +16,7 @@ export function Mission({
 }: {
   state: State;
   locked: boolean;
-  run: (action: Action, note?: string) => void;
+  run: (action: Action, note?: string) => boolean;
 }) {
   const [revealed, setRevealed] = useState(false);
   const mission = privateMission(state);
@@ -25,7 +25,7 @@ export function Mission({
     return (
       <Screen title="Private mission" lede="Spectators do not get one.">
         <Card band="Nothing here" title="You are watching">
-          <p>Switch to an attendee on the You tab if you want a mission of your own.</p>
+          <p>Tap your name at the top and switch to an attendee if you want a mission of your own.</p>
         </Card>
       </Screen>
     );

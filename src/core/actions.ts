@@ -42,7 +42,8 @@ const newId = () => globalThis.crypto.randomUUID();
  *
  * There is no server and no password: identity here demonstrates the shape of
  * the game, it is not authentication. Joining stays legal after the kill switch
- * so the recap can be read from any phone.
+ * so the recap can be read from any phone, but it no longer announces itself:
+ * the recap is read-only, feed included.
  */
 export function join(
   state: State,
@@ -64,12 +65,13 @@ export function join(
   // Dedupe on the actor's own arrival line. Matching on the word "joined"
   // missed spectators entirely, so every switch back re-announced them.
   const arrival = attendee === 'Spectator' ? 'A spectator is watching.' : `${attendee} joined the party.`;
-  const alreadyHere = state.feed.some((event) => event.actor === attendee && event.text === arrival);
+  const quiet =
+    isReadOnly(state, now) || state.feed.some((event) => event.actor === attendee && event.text === arrival);
 
   return {
     ...state,
     session: session.data,
-    feed: alreadyHere ? state.feed : record(state.feed, { actor: attendee, text: arrival, at: now }),
+    feed: quiet ? state.feed : record(state.feed, { actor: attendee, text: arrival, at: now }),
   };
 }
 
@@ -100,7 +102,7 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       const prediction = mustFindPrediction(action.id);
       assertOpen(state, action.id);
       const mine = next.picks[me] ?? {};
-      if (!mine[action.id] && Object.keys(mine).length >= MAX_PICKS) {
+      if (!mine[action.id] && openPicks(state, me) >= MAX_PICKS) {
         throw new Error('Keep it to three predictions at a time. Void one to make room.');
       }
       next.picks[me] = { ...mine, [action.id]: action.choice };
@@ -280,6 +282,13 @@ const MISSION_FEED: Record<'accepted' | 'done' | 'void', (who: Attendee) => stri
   done: (who) => `${who} quietly finished something.`,
   void: (who) => `${who} passed on a mission. No points lost.`,
 };
+
+/**
+ * Picks still waiting on a result. A settled or voided pick has done its job,
+ * so it stops holding one of the three slots.
+ */
+export const openPicks = (state: State, who: Attendee): number =>
+  Object.keys(state.picks[who] ?? {}).filter((id) => !(id in state.results)).length;
 
 /** Object.values on a partial record can yield holes. This drops them. */
 export const heldBounties = (state: State) =>

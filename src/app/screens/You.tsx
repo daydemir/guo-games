@@ -25,8 +25,8 @@ export function You({
 }: {
   state: State;
   locked: boolean;
-  run: (action: Action, note?: string) => void;
-  signIn: (code: string, who: Identity, name: string, color: Color) => void;
+  run: (action: Action, note?: string) => boolean;
+  signIn: (code: string, who: Identity, name: string, color: Color) => boolean;
   reset: () => void;
   exportBackup: () => string;
   importBackup: (text: string) => void;
@@ -36,18 +36,10 @@ export function You({
   const organizer = isOrganizer(state);
 
   return (
-    <Screen title="You" lede={`Playing as ${who ?? 'nobody'}.`}>
+    <Screen title="You" lede={`Playing as ${who ?? 'nobody'}. Who holds this phone, your backup, and the rules.`}>
       <IdentityCard state={state} signIn={signIn} />
 
       {organizer ? <OrganizerSettings state={state} locked={locked} run={run} /> : null}
-
-      <Card band="Guardrails" title="What this app will never ask you to do">
-        <ul className="rules">
-          {GUARDRAILS.map((rule) => (
-            <li key={rule}>{rule}</li>
-          ))}
-        </ul>
-      </Card>
 
       <Card band="Backup" title="Keep a copy off this device">
         <p>
@@ -80,7 +72,7 @@ export function You({
         </div>
       </Card>
 
-      <Card band="This device" title="Reset">
+      <Card band="This device" title="Start over">
         <p>
           Wipes the party saved in this browser and puts the seeded demo back. Vault photos and voice notes
           go with it, and there is no copy anywhere else.
@@ -108,10 +100,16 @@ export function You({
         )}
       </Card>
 
+      <Card band="Guardrails" title="What this app will never ask you to do">
+        <ul className="rules">
+          {GUARDRAILS.map((rule) => (
+            <li key={rule}>{rule}</li>
+          ))}
+        </ul>
+      </Card>
+
       <p className="fineprint">
-        Local only. No account, no server, no analytics, nothing uploaded. Closing the tab keeps your party,
-        but a browser can evict it without asking: clearing site data removes it for good, and iOS drops
-        unused site storage after roughly seven days. Export a backup before the trip and after dinner.
+        Local only. No account, no server, no analytics, nothing uploaded.
       </p>
     </Screen>
   );
@@ -130,7 +128,7 @@ function IdentityCard({
   signIn,
 }: {
   state: State;
-  signIn: (code: string, who: Identity, name: string, color: Color) => void;
+  signIn: (code: string, who: Identity, name: string, color: Color) => boolean;
 }) {
   const current = me(state) ?? 'Spectator';
   const session = state.session;
@@ -144,7 +142,17 @@ function IdentityCard({
     <Card band="Identity" title="Who is holding this phone">
       <div className="field">
         <label htmlFor="switch-identity">Switch identity</label>
-        <select id="switch-identity" value={who} onChange={(event) => setWho(event.target.value as Identity)}>
+        <select
+          id="switch-identity"
+          value={who}
+          onChange={(event) => {
+            const next = event.target.value as Identity;
+            setWho(next);
+            // A name belongs to a person. Carrying "Kevin" over to Nick would
+            // put the wrong name on Nick's cards and in the masthead.
+            setName(next === current ? (session?.name ?? '') : '');
+          }}
+        >
           {IDENTITIES.map((identity) => (
             <option key={identity} value={identity}>
               {identity}
@@ -170,7 +178,7 @@ function IdentityCard({
         <select id="switch-color" value={color} onChange={(event) => setColor(event.target.value as Color)}>
           {COLORS.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {option[0].toUpperCase() + option.slice(1)}
             </option>
           ))}
         </select>
@@ -222,7 +230,7 @@ function OrganizerSettings({
 }: {
   state: State;
   locked: boolean;
-  run: (action: Action, note?: string) => void;
+  run: (action: Action, note?: string) => boolean;
 }) {
   const [when, setWhen] = useState(() => toLocalInput(state.settings.expiresAt));
   const [dateError, setDateError] = useState<string | null>(null);
@@ -241,19 +249,6 @@ function OrganizerSettings({
 
   return (
     <Card band="Organizer" title="Settings" tone="live">
-      <div className="field">
-        <label htmlFor="hide-rankings">
-          <input
-            id="hide-rankings"
-            type="checkbox"
-            checked={state.settings.hideRankings}
-            disabled={locked}
-            onChange={(event) => run({ type: 'settings', hideRankings: event.target.checked })}
-          />
-          Keep rankings hidden until dinner
-        </label>
-      </div>
-
       <fieldset className="field">
         <legend>How the day ends</legend>
         {(['stories', 'points'] as const).map((mode) => (
@@ -271,6 +266,22 @@ function OrganizerSettings({
           </label>
         ))}
       </fieldset>
+      {/* Story awards never rank anyone, so this only means something for points. */}
+      {state.settings.awards === 'points' ? (
+        <div className="field">
+          <label htmlFor="hide-rankings">
+            <input
+              id="hide-rankings"
+              type="checkbox"
+              checked={state.settings.hideRankings}
+              disabled={locked}
+              onChange={(event) => run({ type: 'settings', hideRankings: event.target.checked })}
+            />
+            Keep rankings hidden until dinner
+          </label>
+        </div>
+      ) : null}
+
 
       <div className="field">
         <label htmlFor="expires">Closing date</label>

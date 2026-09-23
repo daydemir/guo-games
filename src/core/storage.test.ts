@@ -89,3 +89,12 @@ it('does not call an empty device unreadable', () => {
   save(good, as('Kevin'));
   expect(load(good, NOW).unreadable).toBe(false);
 });
+
+it('treats a closing date it cannot read as an unreadable save, not an open trip', () => {
+  const party = { ...as('Kevin'), settings: { hideRankings: true, awards: 'stories', expiresAt: 'soon' } };
+  const storage = memoryStorage(JSON.stringify(party));
+  const loaded = load(storage, NOW);
+
+  expect(loaded.unreadable).toBe(true);
+  expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(party));
+});

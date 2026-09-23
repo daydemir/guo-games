@@ -13,7 +13,7 @@ for more than a minute at a time.
 ```bash
 npm install          # Node >= 22.12
 npm run dev          # http://127.0.0.1:5173
-npm test             # 64 unit and screen tests (Vitest)
+npm test             # unit and screen tests (Vitest)
 npm run typecheck    # tsc --noEmit, strict
 npm run lint         # ESLint, type-aware
 npm run build        # typecheck, Vite build, then generate dist/sw.js
@@ -25,6 +25,15 @@ npm run smoke        # build, then Playwright smoke tests against that build
 give a misleading pass; the Playwright config then starts `vite preview` for
 you. Screenshots from a run land in `test-results/`, which is ignored; the
 curated captures in `artifacts/` are committed and a run never rewrites them.
+
+## How the app is laid out
+
+Six tabs, in the order the day runs: **Today** (the one next thing, where you
+stand, and the shared feed), **Picks** (yes or no predictions and the Dock
+Draft), **Bounties**, **Mission**, **Vault** and **Dinner** (award cards, stories
+read out of the vault, sealed notes). Tapping your name in the masthead opens
+**You**: who is holding the phone, organizer settings, backup and restore, and
+the reset. Six is the most a 390px phone holds without a scrolling tab bar.
 
 ## Architecture
 
@@ -41,7 +50,7 @@ src/core/       the game, with no React in it
   storage.ts      load, save, migrate, and refuse to destroy an unreadable save
   media.ts        photo and voice note validation
   time.ts         the date kill switch and relative time
-src/app/        React: one hook for state, one screen per tab
+src/app/        React: one hook for state, one screen per tab, plus You
 src/ui/         the five visual primitives every screen is built from
 e2e/            Playwright smoke tests against the real build
 ```
@@ -79,7 +88,8 @@ who can unlock the device can read the whole vault, including the organizer inbo
 
 A browser is not durable storage. Clearing site data destroys the party instantly,
 and iOS evicts storage for a site or installed web app that has not been opened in
-roughly seven days. **Export a backup from the You tab** before the trip and again
+roughly seven days. **Export a backup from the You page** (tap your name at the
+top) before the trip and again
 after dinner; that file is the only copy that survives the browser.
 
 If the save on a device becomes unreadable, the app refuses to start the game and
@@ -96,17 +106,17 @@ until you choose.
 | Roster and organizers | `ATTENDEES`, `ORGANIZERS` | seven names, Deniz and Nick organize |
 | Kill switch | `DEFAULT_EXPIRES_AT`, editable in the app by an organizer | `2027-07-06T10:00:00Z` |
 | Sealed notes open | `FUTURE_OPENS_AT` | `2032-07-06T10:00:00Z` |
-| Hidden rankings, story vs points awards | organizer settings on the You tab | hidden, story awards |
+| Story vs points awards, hidden rankings | organizer settings on the You page | story awards, hidden |
 
 The trip dates are placeholders. Set `DEFAULT_EXPIRES_AT` to the real end of the
-trip before sharing the link, or move it from the You tab as an organizer.
+trip before sharing the link, or move it from the You page as an organizer.
 
 ## First run
 
 Opening the app on a new device seeds a demo party that is already half in motion:
 other people have picked, drafted, confirmed and filed memories. Kevin and Deniz
 are left untouched, so joining as either one still walks the whole loop from the
-start. **Reset this device** on the You tab puts the demo back.
+start. **Reset this device** on the You page puts the demo back.
 
 ## Deploying to Vercel
 
@@ -136,6 +146,11 @@ Nothing else is required. There is no server, no database and no API key.
 `scripts/build-sw.mjs` writes `dist/sw.js` after each build with the real hashed
 asset names baked in, so the offline shell can never drift from what Vite emitted.
 The shell is cache-first, which is always correct here because there is no API.
+Cache lookups ignore `Vary`, because a host that answers `Vary: Origin` would
+otherwise make the module script miss its cached copy and open offline as a
+blank page. A Playwright check loads the app, goes offline, reloads and joins.
+It runs in Chromium; Playwright's WebKit cannot emulate offline under a service
+worker, so iOS offline behavior is worth one manual check on a real phone.
 
 ## Testing
 
@@ -152,17 +167,23 @@ Behaviour was built test-first. The red and green runs are kept in `artifacts/`:
 | `tdd-07-red-coderabbit.log` | the CodeRabbit-round tests failing before the fixes |
 | `tdd-08-green-coderabbit.log` | the full suite passing after them |
 | `tdd-09-green-final-review.log` | the full suite passing after the final review round |
-| `smoke-browser.log` | the 10 Playwright checks passing in Chromium at 390px and 1280px |
+| `tdd-10-red-final-pass.log` | the final-pass tests failing before the fixes |
+| `tdd-11-green-final-pass.log` | the full suite passing after them |
+| `smoke-browser.log` | the Playwright checks at 390px (WebKit) and 1280px (Chromium) |
 
-Covered: join and spectator roles (including arrival dedupe), the three-pick cap,
+Covered: join and spectator roles (including arrival dedupe), the three-pick cap
+and the slot a settled or voided pick gives back,
 organizer-only settling, settlement finality, who may void an open versus a
 settled item, duplicate fish prevention and release, one-bounty-at-a-time,
 witness-must-be-someone-else, mission privacy and opt-out, vault visibility and
 the organizer inbox, media type, size and budget limits, photo downscaling
 arithmetic, award card assignment, sealed notes, the kill switch across every
-action, storage migration and defaults, refusing to overwrite an unreadable save,
-the recovery and backup round trip, deliberate identity switching, and the
-closing-date guard.
+action (a late join leaves the feed alone), storage migration and defaults, an
+unparseable closing date, refusing to overwrite an unreadable save, keeping the
+last saved state when a write fails, forms that keep their text when a save is
+refused, the recovery and backup round trip, deliberate identity switching that
+never carries one person's name to another, the dinner read-out, the offline
+shell, and the closing-date guard.
 
 Screenshots at 390px and 1280px are in `artifacts/`.
 

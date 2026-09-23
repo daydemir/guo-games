@@ -25,8 +25,9 @@ export type Party = {
   /** The unreadable bytes, as a downloadable backup-shaped file. */
   exportBackup: () => string;
   importBackup: (text: string) => void;
-  run: (action: Action, note?: string) => void;
-  signIn: (code: string, who: Identity, name: string, color: Color) => void;
+  /** True when the command was applied and saved, false when it was refused. */
+  run: (action: Action, note?: string) => boolean;
+  signIn: (code: string, who: Identity, name: string, color: Color) => boolean;
   reset: () => void;
   /** Ticks about once a minute so relative times and the 4pm spark stay honest. */
   now: number;
@@ -34,7 +35,20 @@ export type Party = {
 
 export type Recovery = { message: string; raw: string };
 
-const localStore: StorageLike | null = typeof localStorage === 'undefined' ? null : localStorage;
+/**
+ * Even touching `localStorage` throws when a browser blocks site data, and at
+ * module scope that would blank the page. No storage is an answer, not a crash.
+ */
+function browserStorage(): StorageLike | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+const NOT_SAVING =
+  'This browser is not saving anything for this site, so the party will be gone when the tab closes.';
 
 /**
  * Holds the party for the whole app: one state, one dispatcher, one place that
@@ -44,13 +58,13 @@ const localStore: StorageLike | null = typeof localStorage === 'undefined' ? nul
  * render. That keeps a failed load from being overwritten on mount, and keeps
  * a full disk reportable at the moment it happens.
  */
-export function useParty(storage: StorageLike | null = localStore): Party {
+export function useParty(storage: StorageLike | null = browserStorage()): Party {
   const initial: Loaded = useMemo(
     () => (storage ? load(storage) : { state: demoState(), problem: null, unreadable: false, raw: null }),
     [storage],
   );
   const [state, setState] = useState(initial.state);
-  const [problem, setProblem] = useState<string | null>(initial.problem);
+  const [problem, setProblem] = useState<string | null>(storage ? initial.problem : NOT_SAVING);
   const [recovery, setRecovery] = useState<Recovery | null>(
     initial.unreadable && initial.raw !== null ? { message: initial.problem ?? '', raw: initial.raw } : null,
   );
@@ -77,37 +91,32 @@ export function useParty(storage: StorageLike | null = localStore): Party {
     return true;
   }, [recovery]);
 
-  const commit = useCallback(
-    (next: State, confirmation?: string) => {
-      if (blocked()) return;
-      latest.current = next;
-      setState(next);
-      setNote(confirmation ?? null);
-      try {
-        if (storage) save(storage, next);
-        setProblem(null);
-      } catch (error) {
-        setProblem(messageFrom(error));
-      }
-    },
-    [storage, blocked],
-  );
-
-  /** Runs a command, or turns the rule it broke into a message. */
+  /**
+   * Runs a command and saves the result, or turns the rule it broke into a
+   * message. The screen only moves on once the write has landed: showing a
+   * memory that never reached storage would lose it on the next reload.
+   */
   const attempt = useCallback(
-    (compute: (current: State) => State, confirmation?: string) => {
+    (compute: (current: State) => State, confirmation?: string): boolean => {
       // Checked before the reducer runs, not after. Otherwise a rescued empty
       // party throws its own "join first" complaint and the real reason the
       // app is refusing never reaches the player.
-      if (blocked()) return;
+      if (blocked()) return false;
       try {
-        commit(compute(latest.current), confirmation);
+        const next = compute(latest.current);
+        if (storage) save(storage, next);
+        latest.current = next;
+        setState(next);
+        setProblem(null);
+        setNote(confirmation ?? null);
+        return true;
       } catch (error) {
         setProblem(messageFrom(error));
         setNote(null);
+        return false;
       }
     },
-    [commit, blocked],
+    [storage, blocked],
   );
 
   const run = useCallback(

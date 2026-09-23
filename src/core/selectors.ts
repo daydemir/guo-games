@@ -12,7 +12,7 @@ import {
   isAttendee,
 } from './content';
 import type { Attendee, Bounty, Fish, Identity, Prediction } from './content';
-import { heldBounties } from './actions';
+import { heldBounties, openPicks } from './actions';
 import type { Memory, State } from './state';
 import { isReadOnly } from './time';
 
@@ -212,7 +212,11 @@ export const sealedCount = (state: State): number => ATTENDEES.filter((who) => s
 
 /* --------------------------------------------------------------- today view */
 
-export type NextAction = { id: string; title: string; body: string; tab: string };
+/**
+ * The one next thing. `tab` is where it happens, or null when the answer is to
+ * do nothing on the phone at all; `anchor` is a section inside that tab.
+ */
+export type NextAction = { id: string; title: string; body: string; tab: string | null; anchor?: string };
 
 /**
  * One thing to do, never a list. The app is trying to get the phone back into a
@@ -222,25 +226,31 @@ export function nextAction(state: State, now: number = Date.now()): NextAction {
   const who = me(state);
 
   if (!who) {
-    return { id: 'join', title: 'Join the party', body: 'Party code, your name, a color. Thirty seconds.', tab: 'today' };
+    return { id: 'join', title: 'Join the party', body: 'Party code, your name, a color. Thirty seconds.', tab: null };
   }
   if (isReadOnly(state, now)) {
-    return { id: 'recap', title: 'The trip is closed', body: 'Everything here is the recap now. Nothing can change.', tab: 'dinner' };
+    return { id: 'recap', title: 'The trip is closed', body: 'Everything here is the recap now. The award cards are at Dinner.', tab: 'dinner' };
   }
   if (!isAttendee(who)) {
     return {
       id: 'spectate',
       title: 'You are watching',
-      body: 'Follow the feed and the boards. Switch to an attendee any time you want in.',
-      tab: 'feed',
+      body: 'The feed below and every board are yours to follow. Tap your name at the top to join in as an attendee.',
+      tab: null,
     };
   }
 
   if (Object.keys(state.picks[who] ?? {}).length === 0) {
-    return { id: 'predict', title: 'Call one thing', body: 'Pick a side on any prediction. Three is the most you can hold.', tab: 'predictions' };
+    return { id: 'predict', title: 'Call one thing', body: 'Pick a side on any prediction. Three is the most you can hold.', tab: 'picks' };
   }
   if (!state.draft[who]) {
-    return { id: 'draft', title: 'Draft a fish', body: 'One species each, no repeats, before lines hit the water.', tab: 'draft' };
+    return {
+      id: 'draft',
+      title: 'Draft a fish',
+      body: 'One species each, no repeats, before lines hit the water.',
+      tab: 'picks',
+      anchor: 'dock-draft',
+    };
   }
   if ((state.missions[who] ?? 'sealed') === 'sealed') {
     return { id: 'mission', title: 'Open your mission', body: 'One private, low-key thing. Only this phone can see it.', tab: 'mission' };
@@ -262,14 +272,20 @@ export function nextAction(state: State, now: number = Date.now()): NextAction {
     return { id: 'vault', title: 'Add one memory', body: 'A short story, a photo, or a voice note for the Nostalgia Vault.', tab: 'vault' };
   }
   if (!state.future[who]) {
-    return { id: 'future', title: 'Seal a note', body: 'One prediction for five years from now. Nobody reads it until then.', tab: 'dinner' };
+    return {
+      id: 'future',
+      title: 'Seal a note',
+      body: 'One prediction for five years from now. Nobody reads it until then.',
+      tab: 'dinner',
+      anchor: 'sealed-future',
+    };
   }
 
   return {
     id: 'rest',
     title: 'You are set',
     body: 'Put the phone away. This will be here when something needs settling.',
-    tab: 'feed',
+    tab: null,
   };
 }
 
@@ -310,5 +326,5 @@ export function predictionBoard(state: State): PredictionRow[] {
 export const picksLeft = (state: State): number => {
   const who = me(state);
   if (!isAttendee(who)) return 0;
-  return Math.max(0, MAX_PICKS - Object.keys(state.picks[who] ?? {}).length);
+  return Math.max(0, MAX_PICKS - openPicks(state, who));
 };

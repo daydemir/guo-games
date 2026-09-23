@@ -43,6 +43,7 @@ afterEach(() => vi.unstubAllGlobals());
 beforeEach(() => {
   downscaleImage.mockReset();
   run.mockReset();
+  run.mockReturnValue(true);
   onProblem.mockReset();
 });
 
@@ -152,4 +153,20 @@ it('never attaches a voice note whose read finishes after the memory was saved',
 
   expect(screen.queryByText(/note\.mp3 attached/i)).toBeNull();
   expect(screen.queryByText(/attached/i)).toBeNull();
+});
+
+it('keeps the story and the photo when the save is refused', async () => {
+  downscaleImage.mockResolvedValue(jpeg('a.jpg'));
+  run.mockReturnValue(false);
+  renderVault();
+  const user = userEvent.setup();
+
+  await user.type(screen.getByLabelText(/the story/i), 'The shortcut that was not.');
+  await user.upload(fileField(), new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
+  await screen.findByText(/a\.jpg attached/i);
+  await user.click(saveButton());
+
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(screen.getByLabelText(/the story/i)).toHaveProperty('value', 'The shortcut that was not.');
+  expect(screen.getByText(/a\.jpg attached/i)).toBeTruthy();
 });

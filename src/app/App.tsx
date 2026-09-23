@@ -8,25 +8,21 @@ import { Recovery } from './Recovery';
 import { downloadText } from './download';
 import { backupFilename } from '../core/backup';
 import { Today } from './screens/Today';
-import { Predictions } from './screens/Predictions';
-import { Draft } from './screens/Draft';
+import { Picks } from './screens/Picks';
 import { Bounties } from './screens/Bounties';
 import { Mission } from './screens/Mission';
 import { Vault } from './screens/Vault';
 import { Dinner } from './screens/Dinner';
-import { Feed } from './screens/Feed';
 import { You } from './screens/You';
 
+/** In the order the day runs. You is reached from the masthead. */
 const TABS: Tab[] = [
   { id: 'today', label: 'Today' },
-  { id: 'predictions', label: 'Predictions' },
-  { id: 'draft', label: 'Draft' },
+  { id: 'picks', label: 'Picks' },
   { id: 'bounties', label: 'Bounties' },
   { id: 'mission', label: 'Mission' },
   { id: 'vault', label: 'Vault' },
   { id: 'dinner', label: 'Dinner' },
-  { id: 'feed', label: 'Feed' },
-  { id: 'you', label: 'You' },
 ];
 
 /**
@@ -36,6 +32,8 @@ const TABS: Tab[] = [
 export function App() {
   const party = useParty();
   const [tab, setTab] = useState('today');
+  /** A section to land on inside the new tab, such as the Dock Draft on Picks. */
+  const [anchor, setAnchor] = useState<string | null>(null);
   const { state, problem, note, dismiss, run, signIn, reset, now, recovery } = party;
   const locked = isReadOnly(state, now);
 
@@ -61,8 +59,11 @@ export function App() {
       mounted.current = true;
       return;
     }
-    if (signedIn) document.getElementById('main')?.focus();
-  }, [signedIn, tab]);
+    if (!signedIn) return;
+    const target = (anchor && document.getElementById(anchor)) || document.getElementById('main');
+    target?.focus();
+    if (anchor) target?.scrollIntoView({ block: 'start' });
+  }, [signedIn, tab, anchor]);
 
   if (recovery) {
     return (
@@ -81,8 +82,9 @@ export function App() {
     return <JoinScreen onJoin={signIn} problem={problem} />;
   }
 
-  function go(next: string) {
+  function go(next: string, section: string | null = null) {
     setTab(next);
+    setAnchor(section);
   }
 
   return (
@@ -90,6 +92,7 @@ export function App() {
       tabs={TABS}
       active={tab}
       onNavigate={go}
+      holder={{ name: state.session.name, color: state.session.color }}
       banner={
         <div className="banners">
           {locked ? (
@@ -114,16 +117,15 @@ export function App() {
       }
     >
       {tab === 'today' ? <Today state={state} now={now} onGo={go} /> : null}
-      {tab === 'predictions' ? <Predictions state={state} locked={locked} run={run} /> : null}
-      {tab === 'draft' ? <Draft state={state} locked={locked} run={run} /> : null}
+      {tab === 'picks' ? <Picks state={state} locked={locked} run={run} /> : null}
       {tab === 'bounties' ? <Bounties state={state} locked={locked} run={run} /> : null}
       {tab === 'mission' ? <Mission state={state} locked={locked} run={run} /> : null}
       {tab === 'vault' ? (
         <Vault state={state} locked={locked} now={now} run={run} onProblem={party.fail} />
       ) : null}
       {tab === 'dinner' ? <Dinner state={state} locked={locked} now={now} run={run} /> : null}
-      {tab === 'feed' ? <Feed state={state} now={now} /> : null}
-      {tab === 'you' ? <You
+      {tab === 'you' ? (
+        <You
           state={state}
           locked={locked}
           run={run}
@@ -131,7 +133,8 @@ export function App() {
           reset={reset}
           exportBackup={party.exportBackup}
           importBackup={party.importBackup}
-        /> : null}
+        />
+      ) : null}
     </Chrome>
   );
 }

@@ -34,13 +34,18 @@ self.addEventListener('activate', (event) => {
 
 // Cache first for the shell, network for anything else. The app has no API, so
 // a cache hit is always correct and the whole day works with no signal.
+//
+// ignoreVary matters: a server that answers with "Vary: Origin" makes the
+// module script request (which carries an Origin header) miss the entry that
+// install cached without one, and the app then opens offline as a blank page.
+// Every shell URL is content-hashed or tiny, so ignoring Vary is safe here.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((hit) => {
+    caches.match(event.request, { ignoreVary: true }).then((hit) => {
       if (hit) return hit;
       return fetch(event.request)
         .then((response) => {
@@ -53,7 +58,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // Only a page navigation can sensibly fall back to the app shell.
           // Handing index.html to an <img> or an <audio> just fails oddly.
-          if (event.request.mode === 'navigate') return caches.match('/index.html');
+          if (event.request.mode === 'navigate') return caches.match('/index.html', { ignoreVary: true });
           return Response.error();
         });
     }),

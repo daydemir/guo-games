@@ -47,20 +47,20 @@ it('shows settle controls to an organizer and hides them from everyone else', as
   render(<App />);
   const user = await joinAs('Kevin');
 
-  await user.click(tab(/predictions/i));
+  await user.click(tab(/^picks$/i));
   expect(screen.queryByRole('button', { name: /settle yes/i })).toBeNull();
 
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
   await user.selectOptions(screen.getByLabelText(/switch identity/i), 'Deniz');
   await user.click(screen.getByRole('button', { name: /^apply$/i }));
-  await user.click(tab(/predictions/i));
+  await user.click(tab(/^picks$/i));
   expect(screen.getAllByRole('button', { name: /settle yes/i }).length).toBeGreaterThan(0);
 });
 
 it('stops a second attendee drafting a species that is gone', async () => {
   render(<App />);
   const user = await joinAs('Kevin');
-  await user.click(tab(/^draft$/i));
+  await user.click(tab(/^picks$/i));
 
   const board = screen.getByRole('list', { name: /dock draft board/i });
   const taken = within(board).getByRole('button', { name: /^Ono/i });
@@ -77,7 +77,7 @@ it('keeps a private mission on the phone that owns it', async () => {
   const mine = screen.getByTestId('mission-text').textContent ?? '';
   expect(mine.length).toBeGreaterThan(10);
 
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
   await user.selectOptions(screen.getByLabelText(/switch identity/i), 'Jack');
   await user.click(screen.getByRole('button', { name: /^apply$/i }));
   await user.click(tab(/^mission$/i));
@@ -96,7 +96,7 @@ it('turns the whole app read-only once the closing date has passed', async () =>
   expect(screen.getByRole('status').textContent).toMatch(/read-only recap/i);
 
   const user = userEvent.setup();
-  await user.click(tab(/predictions/i));
+  await user.click(tab(/^picks$/i));
   expect(screen.queryByRole('button', { name: /^yes$/i })).toBeNull();
   expect(screen.queryByRole('button', { name: /settle yes/i })).toBeNull();
 });
@@ -106,7 +106,7 @@ it('resets a device back to the seeded demo party', async () => {
   const user = await joinAs('Kevin');
   expect(localStorage.getItem(STORAGE_KEY)).toContain('Kevin');
 
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
   await user.click(screen.getByRole('button', { name: /reset this device/i }));
   await user.click(screen.getByRole('button', { name: /yes, reset/i }));
 
@@ -114,7 +114,7 @@ it('resets a device back to the seeded demo party', async () => {
   expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
 });
 
-it('switching identity needs a deliberate apply and keeps the name you chose', async () => {
+it('switching identity needs a deliberate apply and never carries one person\'s name to another', async () => {
   render(<App />);
   const user = userEvent.setup();
   await user.clear(screen.getByLabelText(/party code/i));
@@ -123,14 +123,21 @@ it('switching identity needs a deliberate apply and keeps the name you chose', a
   await user.type(screen.getByLabelText(/name on your cards/i), 'Kev');
   await user.click(screen.getByRole('button', { name: /join the party/i }));
 
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
   await user.selectOptions(screen.getByLabelText(/switch identity/i), 'Jack');
   // Nothing has happened yet: the roster select alone must not switch anyone.
-  expect(screen.getByText('Playing as Kevin.')).toBeTruthy();
+  expect(screen.getByText(/^Playing as Kevin\./)).toBeTruthy();
 
   await user.click(screen.getByRole('button', { name: /^apply$/i }));
-  expect(screen.getByText('Playing as Jack.')).toBeTruthy();
-  expect(screen.getByLabelText(/name on your cards/i)).toHaveProperty('value', 'Kev');
+  expect(screen.getByText(/^Playing as Jack\./)).toBeTruthy();
+  expect(screen.getByLabelText(/name on your cards/i)).toHaveProperty('value', 'Jack');
+  expect(screen.getByRole('link', { name: /you: jack/i })).toBeTruthy();
+
+  // Switching back restores nothing by magic, but a typed name is kept.
+  await user.selectOptions(screen.getByLabelText(/switch identity/i), 'Kevin');
+  await user.type(screen.getByLabelText(/name on your cards/i), 'Kev');
+  await user.click(screen.getByRole('button', { name: /^apply$/i }));
+  expect(screen.getByRole('link', { name: /you: kev$/i })).toBeTruthy();
 });
 
 it('refuses to write over an unreadable save and offers a way out', async () => {
@@ -193,7 +200,7 @@ it('restores a backup file over an unreadable save', async () => {
 it('exports a backup file that reads straight back in', async () => {
   render(<App />);
   const user = await joinAs('Kevin');
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
 
   const written: Blob[] = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
@@ -214,7 +221,7 @@ it('exports a backup file that reads straight back in', async () => {
 it('explains an unusable closing date instead of throwing', async () => {
   render(<App />);
   const user = await joinAs('Deniz');
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
 
   await user.clear(screen.getByLabelText(/closing date/i));
   await user.click(screen.getByRole('button', { name: /move the closing date/i }));
@@ -242,7 +249,7 @@ it('refuses an incomplete backup without touching what is already saved', async 
   await joinAs('Kevin');
   const before = localStorage.getItem(STORAGE_KEY)!;
 
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
   await user.upload(
     screen.getByLabelText(/restore from a backup/i),
     new File([JSON.stringify({ app: 'guo-games', party: { version: 3 } })], 'truncated.json', {
@@ -252,13 +259,13 @@ it('refuses an incomplete backup without touching what is already saved', async 
 
   expect((await screen.findByRole('alert')).textContent).toMatch(/incomplete/i);
   expect(localStorage.getItem(STORAGE_KEY)).toBe(before);
-  expect(screen.getByText('Playing as Kevin.')).toBeTruthy();
+  expect(screen.getByText(/^Playing as Kevin\./)).toBeTruthy();
 });
 
 it('settles the name field after Apply so the form stops looking unsaved', async () => {
   render(<App />);
   const user = await joinAs('Kevin');
-  await user.click(tab(/^you$/i));
+  await user.click(tab(/^you/i));
 
   // An empty name falls back to the identity, which is what gets submitted.
   await user.clear(screen.getByLabelText(/name on your cards/i));
@@ -275,7 +282,7 @@ it('settles the name field after Apply so the form stops looking unsaved', async
 it('does not offer a spectator a void control they cannot use', async () => {
   render(<App />);
   const user = await joinAs('Spectator');
-  await user.click(tab(/predictions/i));
+  await user.click(tab(/^picks$/i));
 
   expect(screen.queryByRole('button', { name: /^void$/i })).toBeNull();
 });
@@ -283,11 +290,92 @@ it('does not offer a spectator a void control they cannot use', async () => {
 it('offers void on an open prediction but not on a settled one, for a plain attendee', async () => {
   render(<App />);
   const user = await joinAs('Jack');
-  await user.click(tab(/predictions/i));
+  await user.click(tab(/^picks$/i));
 
   // The seeded demo has flights already settled and the rest still open.
   expect(screen.getAllByRole('button', { name: /^void$/i }).length).toBeGreaterThan(0);
 
   const settled = screen.getByText('Does the whole crew land before sunset?').closest('article')!;
   expect(within(settled).queryByRole('button', { name: /^void$/i })).toBeNull();
+});
+
+it('fits the day into six tabs, with You reached from the name in the masthead', async () => {
+  render(<App />);
+  const user = await joinAs('Kevin');
+
+  const nav = screen.getByRole('navigation', { name: /sections/i });
+  expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual([
+    'Today',
+    'Picks',
+    'Bounties',
+    'Mission',
+    'Vault',
+    'Dinner',
+  ]);
+
+  await user.click(screen.getByRole('link', { name: /you: kevin/i }));
+  expect(screen.getByRole('heading', { name: /^you$/i })).toBeTruthy();
+});
+
+it('shows the shared feed on Today, and the rest of it on request', async () => {
+  render(<App />);
+  const user = await joinAs('Kevin');
+
+  const feed = () => within(screen.getByRole('region', { name: /feed/i })).getAllByRole('listitem');
+  expect(feed()).toHaveLength(5);
+  await user.click(screen.getByRole('button', { name: /show all/i }));
+  expect(feed().length).toBeGreaterThan(5);
+});
+
+it('gives a spectator the boards to watch but no controls that would only be refused', async () => {
+  render(<App />);
+  const user = await joinAs('Spectator');
+
+  expect(screen.queryByRole('button', { name: /take me there/i })).toBeNull();
+  await user.click(tab(/^picks$/i));
+  expect(screen.queryByRole('button', { name: /^yes$/i })).toBeNull();
+  expect(screen.getByRole('list', { name: /dock draft board/i })).toBeTruthy();
+});
+
+it('lets an organizer read a vault story out from the Dinner tab, for everyone to see', async () => {
+  render(<App />);
+  const user = await joinAs('Deniz');
+
+  await user.click(tab(/^dinner$/i));
+  await user.click(screen.getByRole('button', { name: /open dinner/i }));
+  const [first] = screen.getAllByRole('button', { name: /read this out/i });
+  await user.click(first);
+  expect(screen.getAllByRole('heading', { name: /read out at dinner/i })).toHaveLength(1);
+
+  await user.click(tab(/^you/i));
+  await user.selectOptions(screen.getByLabelText(/switch identity/i), 'Jack');
+  await user.click(screen.getByRole('button', { name: /^apply$/i }));
+  await user.click(tab(/^dinner$/i));
+  expect(screen.getAllByRole('heading', { name: /read out at dinner/i })).toHaveLength(1);
+  expect(screen.queryByRole('button', { name: /read this out/i })).toBeNull();
+});
+
+it('keeps a sealed note on screen when sealing it is refused', async () => {
+  render(<App />);
+  const user = await joinAs('Kevin');
+  await user.click(tab(/^dinner$/i));
+
+  await user.type(screen.getByLabelText(/five years from now/i), '   ');
+  await user.click(screen.getByRole('button', { name: /seal it/i }));
+
+  expect(screen.getByRole('alert').textContent).toMatch(/1 to 300/);
+  expect(screen.getByLabelText(/five years from now/i)).toHaveProperty('value', '   ');
+});
+
+it('takes "Draft a fish" straight to the Dock Draft, not the top of Picks', async () => {
+  render(<App />);
+  const user = await joinAs('Kevin');
+  await user.click(screen.getByRole('button', { name: /take me there/i }));
+  const [yes] = screen.getAllByRole('button', { name: /^yes$/i });
+  await user.click(yes);
+
+  await user.click(tab(/^today$/i));
+  expect(screen.getByRole('heading', { name: /draft a fish/i })).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: /take me there/i }));
+  expect(document.activeElement?.textContent).toBe('Dock Draft');
 });

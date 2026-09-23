@@ -26,7 +26,7 @@ export function Vault({
   state: State;
   locked: boolean;
   now: number;
-  run: (action: Action, note?: string) => void;
+  run: (action: Action, note?: string) => boolean;
   onProblem: (message: string) => void;
 }) {
   const who = me(state);
@@ -81,25 +81,20 @@ export function Vault({
                         {memory.revealed ? ' (read out)' : ''}
                       </p>
                       <p>{memory.text || 'A file with no words.'}</p>
-                      {!memory.revealed && state.dinner && !locked ? (
-                        <button type="button" onClick={() => run({ type: 'revealMemory', id: memory.id })}>
-                          Read this out
-                        </button>
-                      ) : null}
                     </li>
                   ))}
                 </ul>
               </Card>
             ))
           )}
-          {!state.dinner ? <p className="hint">Open dinner on the Dinner tab before anything can be read out.</p> : null}
+          <p className="hint">Stories are read out from the Dinner tab once dinner is open.</p>
         </section>
       ) : null}
 
       <p className="fineprint">
         Photos and voice notes are stored inside this browser as text, never uploaded. Photos are resized
         to fit; voice notes need to be under 300 KB. Anyone holding this device can open them, and a
-        browser can evict the lot, so export a backup from the You tab.
+        browser can evict the lot, so export a backup from the You page (tap your name at the top).
       </p>
     </Screen>
   );
@@ -148,7 +143,7 @@ function MemoryForm({
   onProblem,
 }: {
   state: State;
-  run: (action: Action, note?: string) => void;
+  run: (action: Action, note?: string) => boolean;
   onProblem: (message: string) => void;
 }) {
   const [about, setAbout] = useState<Attendee>('Kevin');
@@ -225,7 +220,9 @@ function MemoryForm({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    run({ type: 'submitMemory', about, moment, text, media }, 'Saved to the vault.');
+    // A refused save keeps every field, so a full device or a closing trip
+    // never costs somebody the story they just typed.
+    if (!run({ type: 'submitMemory', about, moment, text, media }, 'Saved to the vault.')) return;
     // This memory is gone; nothing still in flight belongs to the next one.
     nextTicket();
     setText('');
