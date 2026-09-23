@@ -1,0 +1,23 @@
+Running 18 tests using 1 worker
+
+  ✓   1 [mobile] › e2e/smoke.spec.ts:11:1 › a first-time visitor can join and reach their next action (717ms)
+  ✓   2 [mobile] › e2e/smoke.spec.ts:32:1 › the core loop works end to end in a real browser (1.6s)
+  ✓   3 [mobile] › e2e/smoke.spec.ts:97:1 › the app ships an installable manifest and an offline shell (222ms)
+  ✓   4 [mobile] › e2e/smoke.spec.ts:114:1 › the join form can be completed with a keyboard alone (213ms)
+  ✓   5 [mobile] › e2e/smoke.spec.ts:125:1 › every control is labelled and every image has alternative text (526ms)
+  ✓   6 [mobile] › e2e/smoke.spec.ts:163:1 › a full size phone photo is resized instead of rejected (713ms)
+  -   7 [mobile] › e2e/smoke.spec.ts:203:1 › the whole app opens with no network once it has been visited
+  ✓   8 [mobile] › e2e/smoke.spec.ts:229:1 › a spectator can follow along with nothing to tap that would be refused (302ms)
+  ✓   9 [mobile] › e2e/smoke.spec.ts:240:1 › the offline shell only substitutes itself for page navigations (164ms)
+  ✓  10 [desktop] › e2e/smoke.spec.ts:11:1 › a first-time visitor can join and reach their next action (742ms)
+  ✓  11 [desktop] › e2e/smoke.spec.ts:32:1 › the core loop works end to end in a real browser (4.7s)
+  ✓  12 [desktop] › e2e/smoke.spec.ts:97:1 › the app ships an installable manifest and an offline shell (83ms)
+  ✓  13 [desktop] › e2e/smoke.spec.ts:114:1 › the join form can be completed with a keyboard alone (146ms)
+  ✓  14 [desktop] › e2e/smoke.spec.ts:125:1 › every control is labelled and every image has alternative text (1.6s)
+  ✓  15 [desktop] › e2e/smoke.spec.ts:163:1 › a full size phone photo is resized instead of rejected (955ms)
+  ✓  16 [desktop] › e2e/smoke.spec.ts:203:1 › the whole app opens with no network once it has been visited (327ms)
+  ✓  17 [desktop] › e2e/smoke.spec.ts:229:1 › a spectator can follow along with nothing to tap that would be refused (571ms)
+  ✓  18 [desktop] › e2e/smoke.spec.ts:240:1 › the offline shell only substitutes itself for page navigations (61ms)
+
+  1 skipped
+  17 passed (17.9s)

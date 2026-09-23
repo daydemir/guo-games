@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "npm run build && playwright test"
   },
   "engines": {
     "node": ">=22.12.0"

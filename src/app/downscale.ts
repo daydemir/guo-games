@@ -1,0 +1,54 @@
+import { MAX_FILE_BYTES, MAX_IMAGE_EDGE, decodedBytes, fitWithin, validateMedia } from '../core/media';
+import type { Media } from '../core/media';
+
+/** Quality steps tried in order until the encoded photo fits the byte budget. */
+const QUALITIES = [0.82, 0.7, 0.58, 0.45, 0.35];
+
+/**
+ * Turns a photo straight off a phone camera into something the vault can hold.
+ *
+ * A modern phone produces a 4032px, three to eight megabyte JPEG. The byte
+ * budget is 300 KB, so without this every real photo was rejected and the
+ * feature only worked for files somebody had already resized by hand.
+ */
+export async function downscaleImage(file: File): Promise<Media> {
+  const bitmap = await createImageBitmap(file);
+
+  // An ImageBitmap holds decoded pixels, which for a camera photo is tens of
+  // megabytes. Every way out of here has to release it, including the paths
+  // where the canvas refuses a context or drawing runs out of memory.
+  try {
+    const { width, height } = fitWithin(bitmap.width, bitmap.height, MAX_IMAGE_EDGE);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('This browser could not resize that photo. Try a smaller one.');
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    for (const quality of QUALITIES) {
+      const media = toMedia(file.name, canvas.toDataURL('image/jpeg', quality));
+      if (media.bytes <= MAX_FILE_BYTES) {
+        validateMedia(media);
+        return media;
+      }
+    }
+
+    throw new Error('That photo is too detailed to store on this device. Try a different one.');
+  } finally {
+    bitmap.close?.();
+  }
+}
+
+/** Reads a data URL back into the shape the vault stores, byte count included. */
+function toMedia(name: string, data: string): Media {
+  return {
+    name: jpegName(name),
+    type: 'image/jpeg',
+    bytes: decodedBytes(data.slice(data.indexOf(',') + 1)),
+    data,
+  };
+}
+
+export const jpegName = (name: string) => `${name.replace(/\.[^./\\]+$/, '') || 'photo'}.jpg`;
