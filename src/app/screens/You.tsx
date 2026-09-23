@@ -181,7 +181,14 @@ function IdentityCard({
           className="primary"
           type="button"
           disabled={!dirty}
-          onClick={() => signIn(PARTY_CODE, who, name.trim() || who, color)}
+          onClick={() => {
+            // Apply submits a trimmed name, falling back to the identity. The
+            // field has to hold that same value afterwards or the form stays
+            // dirty forever and Apply never disables.
+            const applied = name.trim() || who;
+            setName(applied);
+            signIn(PARTY_CODE, who, applied, color);
+          }}
         >
           Apply
         </button>

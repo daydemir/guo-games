@@ -221,3 +221,73 @@ it('explains an unusable closing date instead of throwing', async () => {
 
   expect(screen.getByRole('alert').textContent).toMatch(/full date and time/i);
 });
+
+it('shows why a bad backup file was refused, on the recovery screen itself', async () => {
+  localStorage.setItem(STORAGE_KEY, 'corrupt');
+  render(<App />);
+
+  const user = userEvent.setup();
+  await user.upload(
+    screen.getByLabelText(/backup file/i),
+    new File(['{"app":"not-guo-games"}'], 'wrong.json', { type: 'application/json' }),
+  );
+
+  expect((await screen.findByRole('alert')).textContent).toMatch(/not a Guo Games backup/i);
+  expect(localStorage.getItem(STORAGE_KEY)).toBe('corrupt');
+});
+
+it('refuses an incomplete backup without touching what is already saved', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  await joinAs('Kevin');
+  const before = localStorage.getItem(STORAGE_KEY)!;
+
+  await user.click(tab(/^you$/i));
+  await user.upload(
+    screen.getByLabelText(/restore from a backup/i),
+    new File([JSON.stringify({ app: 'guo-games', party: { version: 3 } })], 'truncated.json', {
+      type: 'application/json',
+    }),
+  );
+
+  expect((await screen.findByRole('alert')).textContent).toMatch(/incomplete/i);
+  expect(localStorage.getItem(STORAGE_KEY)).toBe(before);
+  expect(screen.getByText('Playing as Kevin.')).toBeTruthy();
+});
+
+it('settles the name field after Apply so the form stops looking unsaved', async () => {
+  render(<App />);
+  const user = await joinAs('Kevin');
+  await user.click(tab(/^you$/i));
+
+  // An empty name falls back to the identity, which is what gets submitted.
+  await user.clear(screen.getByLabelText(/name on your cards/i));
+  const apply = () => screen.getByRole('button', { name: /^apply$/i }) as HTMLButtonElement;
+  expect(apply().disabled).toBe(false);
+
+  await user.click(apply());
+
+  expect(screen.getByLabelText(/name on your cards/i)).toHaveProperty('value', 'Kevin');
+  expect(apply().disabled).toBe(true);
+  expect(screen.queryByRole('button', { name: /^cancel$/i })).toBeNull();
+});
+
+it('does not offer a spectator a void control they cannot use', async () => {
+  render(<App />);
+  const user = await joinAs('Spectator');
+  await user.click(tab(/predictions/i));
+
+  expect(screen.queryByRole('button', { name: /^void$/i })).toBeNull();
+});
+
+it('offers void on an open prediction but not on a settled one, for a plain attendee', async () => {
+  render(<App />);
+  const user = await joinAs('Jack');
+  await user.click(tab(/predictions/i));
+
+  // The seeded demo has flights already settled and the rest still open.
+  expect(screen.getAllByRole('button', { name: /^void$/i }).length).toBeGreaterThan(0);
+
+  const settled = screen.getByText('Does the whole crew land before sunset?').closest('article')!;
+  expect(within(settled).queryByRole('button', { name: /^void$/i })).toBeNull();
+});

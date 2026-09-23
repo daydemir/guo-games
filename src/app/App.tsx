@@ -67,7 +67,9 @@ export function App() {
   if (recovery) {
     return (
       <Recovery
-        message={recovery.message}
+        // A failed import is the newer, more useful sentence; fall back to the
+        // reason the save was unreadable in the first place.
+        message={problem ?? recovery.message}
         onDownload={() => downloadText(backupFilename(), party.exportBackup())}
         onImport={party.importBackup}
         onReset={reset}

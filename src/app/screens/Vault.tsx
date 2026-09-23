@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { ATTENDEES, MAX_MEMORIES, MAX_STORY_CHARS, MOMENTS, isAttendee } from '../../core/content';
 import type { Attendee, Moment } from '../../core/content';
@@ -155,19 +155,45 @@ function MemoryForm({
   const [moment, setMoment] = useState<Moment>('Before Maui');
   const [text, setText] = useState('');
   const [media, setMedia] = useState<Media | null>(null);
+  const [resizing, setResizing] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  /**
+   * Every asynchronous pick takes a ticket. Resizing a photo takes long enough
+   * that a second pick, or a save, can happen first; without this the slow
+   * result would attach itself to whatever memory is on screen when it lands.
+   */
+  const ticket = useRef(0);
+  const nextTicket = () => (ticket.current += 1);
+  const current = (issued: number) => ticket.current === issued;
+
+  // A resize still running when this form goes away has nothing to attach to.
+  useEffect(() => () => void nextTicket(), []);
 
   function pickFile(event: ChangeEvent<HTMLInputElement>) {
     const input = event.target;
     const file = input.files?.[0];
-    if (!file) return setMedia(null);
+
+    // Any earlier pick is void the moment a new one starts, and the old
+    // attachment goes with it rather than lingering under a new filename.
+    const issued = nextTicket();
+    setMedia(null);
+    setResizing(false);
+    if (!file) return;
 
     // Photos get resized first. Judging a camera roll JPEG on its original
     // size rejected every real photo before it had a chance to fit.
     if (file.type.startsWith('image/')) {
+      setResizing(true);
       downscaleImage(file)
-        .then(setMedia)
+        .then((resized) => {
+          if (!current(issued)) return;
+          setMedia(resized);
+          setResizing(false);
+        })
         .catch((error: unknown) => {
+          if (!current(issued)) return;
+          setResizing(false);
           onProblem(error instanceof Error ? error.message : 'That photo could not be read.');
           input.value = '';
         });
@@ -180,8 +206,11 @@ function MemoryForm({
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => onProblem('That file could not be read. Try another one.');
+    reader.onerror = () => {
+      if (current(issued)) onProblem('That file could not be read. Try another one.');
+    };
     reader.onload = () => {
+      if (!current(issued)) return;
       const candidate: Media = { name: file.name, type: file.type, bytes: file.size, data: String(reader.result) };
       try {
         validateMedia(candidate);
@@ -197,8 +226,11 @@ function MemoryForm({
   function submit(event: FormEvent) {
     event.preventDefault();
     run({ type: 'submitMemory', about, moment, text, media }, 'Saved to the vault.');
+    // This memory is gone; nothing still in flight belongs to the next one.
+    nextTicket();
     setText('');
     setMedia(null);
+    setResizing(false);
     if (fileInput.current) fileInput.current.value = '';
   }
 
@@ -265,8 +297,8 @@ function MemoryForm({
         </p>
       </div>
 
-      <button className="primary" type="submit" disabled={full}>
-        {full ? 'This device is full' : 'Save to the vault'}
+      <button className="primary" type="submit" disabled={full || resizing}>
+        {full ? 'This device is full' : resizing ? 'Resizing the photo' : 'Save to the vault'}
       </button>
     </form>
   );

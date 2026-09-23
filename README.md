@@ -18,13 +18,13 @@ npm run typecheck    # tsc --noEmit, strict
 npm run lint         # ESLint, type-aware
 npm run build        # typecheck, Vite build, then generate dist/sw.js
 npm run preview      # serve the production build on :4173
-npm run smoke        # Playwright smoke tests against the production build
+npm run smoke        # build, then Playwright smoke tests against that build
 ```
 
-`npm run smoke` builds nothing on its own. Run `npm run build` first; the
-Playwright config starts `vite preview` for you. Screenshots from a run land in
-`test-results/`, which is ignored; the curated captures in `artifacts/` are
-committed and a run never rewrites them.
+`npm run smoke` builds first, so a clean checkout or a stale `dist/` cannot
+give a misleading pass; the Playwright config then starts `vite preview` for
+you. Screenshots from a run land in `test-results/`, which is ignored; the
+curated captures in `artifacts/` are committed and a run never rewrites them.
 
 ## Architecture
 
@@ -149,6 +149,8 @@ Behaviour was built test-first. The red and green runs are kept in `artifacts/`:
 | `tdd-04-green-all.log` | the full suite passing |
 | `tdd-05-red-review-fixes.log` | the review-fix tests failing before the fixes |
 | `tdd-06-green-review-fixes.log` | the full suite passing after them |
+| `tdd-07-red-coderabbit.log` | the CodeRabbit-round tests failing before the fixes |
+| `tdd-08-green-coderabbit.log` | the full suite passing after them |
 | `smoke-browser.log` | the 10 Playwright checks passing in Chromium at 390px and 1280px |
 
 Covered: join and spectator roles (including arrival dedupe), the three-pick cap,

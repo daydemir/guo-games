@@ -1,5 +1,6 @@
 import {
   FEED_LIMIT,
+  MAX_FUTURE_CHARS,
   MAX_MEMORIES,
   MAX_NAME_CHARS,
   MAX_PICKS,
@@ -241,7 +242,9 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
 
     case 'sealFuture': {
       const text = action.text.trim();
-      if (!text || text.length > 300) throw new Error('Write a note of 1 to 300 characters.');
+      if (!text || text.length > MAX_FUTURE_CHARS) {
+        throw new Error(`Write a note of 1 to ${MAX_FUTURE_CHARS} characters.`);
+      }
       if (state.future[me]) throw new Error('Your note is already sealed. One per person.');
       next.future[me] = text;
       log(`${me} sealed a note for the future.`);

@@ -35,11 +35,49 @@ export function readBackup(text: string): State {
     throw new Error('That is not a Guo Games backup file.');
   }
 
+  assertComplete((file as BackupFile).party);
+
   const party = parseSavedParty((file as BackupFile).party);
   if (!party) {
     throw new Error('That backup was written by a newer version of the app and cannot be read here.');
   }
   return party;
+}
+
+/**
+ * Every field a current-version party carries. The schema gives all of them a
+ * default, so a truncated v3 file would otherwise parse cleanly into an empty
+ * party and restoring it would quietly wipe the vault it was meant to rescue.
+ *
+ * Older versions are exempt on purpose: filling in fields that did not exist
+ * yet is exactly what migration is for.
+ */
+const REQUIRED_V3_KEYS = [
+  'session',
+  'settings',
+  'dinner',
+  'picks',
+  'results',
+  'draft',
+  'bounties',
+  'missions',
+  'vault',
+  'future',
+  'feed',
+] as const;
+
+function assertComplete(party: unknown): void {
+  if (typeof party !== 'object' || party === null) {
+    throw new Error('That backup does not contain a party.');
+  }
+  if ((party as { version?: unknown }).version !== STATE_VERSION) return;
+
+  const missing = REQUIRED_V3_KEYS.filter((key) => !Object.hasOwn(party, key));
+  if (missing.length > 0) {
+    throw new Error(
+      `That backup is incomplete and was not restored, so nothing on this device changed. Missing: ${missing.join(', ')}.`,
+    );
+  }
 }
 
 /** A filename that sorts by date and says what it is. */

@@ -1,5 +1,6 @@
 import { MAX_PICKS, MOMENTS } from '../../core/content';
-import { isOrganizer, picksLeft, predictionBoard } from '../../core/selectors';
+import { isOrganizer, me, picksLeft, predictionBoard } from '../../core/selectors';
+import { isAttendee } from '../../core/content';
 import type { Action } from '../../core/actions';
 import type { State } from '../../core/state';
 import { Card, Screen, Tally } from '../../ui/primitives';
@@ -22,6 +23,9 @@ export function Predictions({
   const board = predictionBoard(state);
   const organizer = isOrganizer(state);
   const left = picksLeft(state);
+  // Spectators cannot act, and after settlement only an organizer can void.
+  // Offering the control to anyone else just produces a refusal.
+  const playing = isAttendee(me(state)) && !locked;
 
   return (
     <Screen
@@ -76,7 +80,7 @@ export function Predictions({
                         </button>
                       </>
                     ) : null}
-                    {result !== 'void' && !locked ? (
+                    {playing && result !== 'void' && (!result || organizer) ? (
                       <button
                         type="button"
                         className="quiet"
