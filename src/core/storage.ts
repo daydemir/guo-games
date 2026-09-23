@@ -37,7 +37,9 @@ const UNREADABLE =
  * this app could have.
  */
 export function load(storage: StorageLike, now: number = Date.now()): Loaded {
-  const raw = readRaw(storage);
+  // A read that throws is not an empty device. It propagates, so the caller can
+  // refuse to write over a save it was merely unable to see.
+  const raw = storage.getItem(STORAGE_KEY);
   if (raw === null) return { state: demoState(now), problem: null, unreadable: false, raw: null };
 
   const rescued = parseParty(raw);
@@ -103,15 +105,6 @@ export function save(storage: StorageLike, state: State): void {
 
 export function clear(storage: StorageLike): void {
   storage.removeItem(STORAGE_KEY);
-}
-
-/** Private browsing can make even reading throw. A demo party is a fine answer. */
-function readRaw(storage: StorageLike): string | null {
-  try {
-    return storage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
 }
 
 function isQuotaError(error: unknown): boolean {

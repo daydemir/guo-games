@@ -34,7 +34,7 @@ export function App() {
   const [tab, setTab] = useState('today');
   /** A section to land on inside the new tab, such as the Dock Draft on Picks. */
   const [anchor, setAnchor] = useState<string | null>(null);
-  const { state, problem, note, dismiss, run, signIn, reset, now, recovery } = party;
+  const { state, problem, note, dismiss, run, signIn, reset, now, recovery, unsaved } = party;
   const locked = isReadOnly(state, now);
 
   // A message is about the thing you just did, so it should not follow you to
@@ -79,7 +79,7 @@ export function App() {
   }
 
   if (!state.session) {
-    return <JoinScreen onJoin={signIn} problem={problem} />;
+    return <JoinScreen onJoin={signIn} problem={problem ?? unsaved} />;
   }
 
   function go(next: string, section: string | null = null) {
@@ -98,6 +98,11 @@ export function App() {
           {locked ? (
             <p className="banner banner-closed" role="status">
               The trip has closed. This is a read-only recap, and nothing can be changed.
+            </p>
+          ) : null}
+          {unsaved ? (
+            <p className="banner banner-closed" role="status">
+              {unsaved}
             </p>
           ) : null}
           {problem ? (

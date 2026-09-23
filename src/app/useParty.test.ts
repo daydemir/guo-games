@@ -116,8 +116,32 @@ it('reports whether a command worked, so a form knows when it may clear', () => 
   expect(sealed).toBe(false);
 });
 
-it('says so plainly when the browser will not store anything', () => {
+it('keeps saying so when the browser will not store anything, even after things work', () => {
   const { result } = renderHook(() => useParty(null));
-  expect(result.current.problem).toMatch(/not saving/i);
+  expect(result.current.unsaved).toMatch(/not saving/i);
   expect(result.current.recovery).toBeNull();
+
+  reactAct(() => void result.current.signIn('GUO27', 'Kevin', 'Kevin', 'sea'));
+  reactAct(() => result.current.dismiss());
+  expect(result.current.state.session?.attendee).toBe('Kevin');
+  expect(result.current.unsaved).toMatch(/not saving/i);
+});
+
+it('never writes to a device it could not read, in case a party is hiding there', () => {
+  const { storage, read } = device('{"version":3,"a real":"party"}');
+  const writes: string[] = [];
+  const flaky: StorageLike = {
+    getItem: () => {
+      throw new DOMException('denied', 'SecurityError');
+    },
+    setItem: (_key, value) => void writes.push(value),
+    removeItem: storage.removeItem,
+  };
+  const { result } = renderHook(() => useParty(flaky));
+
+  reactAct(() => void result.current.signIn('GUO27', 'Kevin', 'Kevin', 'sea'));
+  expect(result.current.state.session?.attendee).toBe('Kevin');
+  expect(writes).toEqual([]);
+  expect(read()).toBe('{"version":3,"a real":"party"}');
+  expect(result.current.unsaved).toMatch(/not saving/i);
 });

@@ -1,4 +1,4 @@
-import { MAX_FILE_BYTES, MAX_IMAGE_EDGE, fitWithin, validateMedia } from '../core/media';
+import { MAX_FILE_BYTES, MAX_IMAGE_EDGE, decodedBytes, fitWithin, validateMedia } from '../core/media';
 import type { Media } from '../core/media';
 
 /** Quality steps tried in order until the encoded photo fits the byte budget. */
@@ -43,12 +43,10 @@ export async function downscaleImage(file: File): Promise<Media> {
 
 /** Reads a data URL back into the shape the vault stores, byte count included. */
 function toMedia(name: string, data: string): Media {
-  const encoded = data.slice(data.indexOf(',') + 1);
-  const padding = encoded.match(/=*$/)?.[0].length ?? 0;
   return {
     name: jpegName(name),
     type: 'image/jpeg',
-    bytes: (encoded.length / 4) * 3 - padding,
+    bytes: decodedBytes(data.slice(data.indexOf(',') + 1)),
     data,
   };
 }

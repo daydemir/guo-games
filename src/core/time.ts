@@ -9,7 +9,7 @@ export function isReadOnly(state: State, now: number = Date.now()): boolean {
 }
 
 /** Whole days left, floored, never negative. */
-export function daysLeft(state: State, now: number = Date.now()): number {
+function daysLeft(state: State, now: number = Date.now()): number {
   return Math.max(0, Math.floor((Date.parse(state.settings.expiresAt) - now) / 86_400_000));
 }
 

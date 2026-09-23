@@ -44,7 +44,10 @@ export function Dinner({
     >
       {organizer && !state.dinner && !locked ? (
         <Card band="Organizer" title="Open dinner" tone="live">
-          <p>This prints the award cards for everyone and lets you read stories out of the vault, one at a time.</p>
+          <p>
+            {state.settings.awards === 'stories' ? 'This prints the award cards' : 'This unseals the standings'} for
+            everyone and lets you read stories out of the vault, one at a time.
+          </p>
           <button className="primary" type="button" onClick={() => run({ type: 'dinner' }, 'Dinner is open.')}>
             Open dinner
           </button>

@@ -27,7 +27,10 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      // Only this app's own old shells. Another app on the same origin keeps its caches.
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key.startsWith('guo-games-') && key !== CACHE).map((key) => caches.delete(key))),
+      )
       .then(() => self.clients.claim()),
   );
 });

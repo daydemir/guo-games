@@ -12,7 +12,6 @@ export type Attendee = (typeof ATTENDEES)[number];
 
 /** Deniz and Nick run the day. Everyone else just plays. */
 export const ORGANIZERS: readonly Attendee[] = ['Deniz', 'Nick'];
-export const GROOM: Attendee = 'Kevin';
 
 export type Identity = Attendee | 'Spectator';
 export const IDENTITIES: readonly Identity[] = [...ATTENDEES, 'Spectator'];

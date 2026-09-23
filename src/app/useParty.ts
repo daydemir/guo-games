@@ -12,6 +12,11 @@ export type Party = {
   state: State;
   /** The last thing that went wrong, phrased for a player. */
   problem: string | null;
+  /**
+   * Set, for the whole session, when the browser will not store anything.
+   * It is not a `problem`: those clear on the next success, and this does not.
+   */
+  unsaved: string | null;
   /** Confirmation of the last thing that worked. */
   note: string | null;
   dismiss: () => void;
@@ -47,7 +52,7 @@ function browserStorage(): StorageLike | null {
   }
 }
 
-const NOT_SAVING =
+export const NOT_SAVING =
   'This browser is not saving anything for this site, so the party will be gone when the tab closes.';
 
 /**
@@ -59,12 +64,19 @@ const NOT_SAVING =
  * a full disk reportable at the moment it happens.
  */
 export function useParty(storage: StorageLike | null = browserStorage()): Party {
-  const initial: Loaded = useMemo(
-    () => (storage ? load(storage) : { state: demoState(), problem: null, unreadable: false, raw: null }),
-    [storage],
-  );
+  // A device that could not even be read may still hold a party, so it is
+  // never written to either: this session plays from memory and says so.
+  const { initial, store } = useMemo((): { initial: Loaded; store: StorageLike | null } => {
+    const fresh: Loaded = { state: demoState(), problem: null, unreadable: false, raw: null };
+    if (!storage) return { initial: fresh, store: null };
+    try {
+      return { initial: load(storage), store: storage };
+    } catch {
+      return { initial: fresh, store: null };
+    }
+  }, [storage]);
   const [state, setState] = useState(initial.state);
-  const [problem, setProblem] = useState<string | null>(storage ? initial.problem : NOT_SAVING);
+  const [problem, setProblem] = useState<string | null>(initial.problem);
   const [recovery, setRecovery] = useState<Recovery | null>(
     initial.unreadable && initial.raw !== null ? { message: initial.problem ?? '', raw: initial.raw } : null,
   );
@@ -104,7 +116,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
       if (blocked()) return false;
       try {
         const next = compute(latest.current);
-        if (storage) save(storage, next);
+        if (store) save(store, next);
         latest.current = next;
         setState(next);
         setProblem(null);
@@ -116,7 +128,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
         return false;
       }
     },
-    [storage, blocked],
+    [store, blocked],
   );
 
   const run = useCallback(
@@ -134,14 +146,14 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
   );
 
   const reset = useCallback(() => {
-    if (storage) clear(storage);
-    const fresh = storage ? load(storage).state : demoState();
+    if (store) clear(store);
+    const fresh = store ? load(store).state : demoState();
     latest.current = fresh;
     setState(fresh);
     setRecovery(null);
     setProblem(null);
     setNote('This device is back to the demo party.');
-  }, [storage]);
+  }, [store]);
 
   /**
    * The bytes to hand the player as a file. When the device save is unreadable
@@ -157,7 +169,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
     (text: string) => {
       try {
         const restored = readBackup(text);
-        if (storage) save(storage, restored);
+        if (store) save(store, restored);
         latest.current = restored;
         setState(restored);
         setRecovery(null);
@@ -168,7 +180,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
         setNote(null);
       }
     },
-    [storage],
+    [store],
   );
 
   const dismiss = useCallback(() => {
@@ -179,6 +191,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
   return {
     state,
     problem,
+    unsaved: store ? null : NOT_SAVING,
     note,
     dismiss,
     fail: setProblem,

@@ -71,7 +71,9 @@ export function Today({
             <Stat label="Mission" value={mission ? MISSION_LABEL[mission.status] : 'None'} />
             <Stat label="Closes" value={closingLabel(state, now)} />
           </div>
-          {standings(state) === null ? (
+          {state.settings.awards === 'stories' ? (
+            <p className="hint">Nobody gets ranked. Everyone gets an award card at dinner, written from the day.</p>
+          ) : standings(state) === null ? (
             <p className="hint">Standings stay sealed until dinner, on purpose. This is a day out, not a tournament.</p>
           ) : null}
         </Card>

@@ -167,7 +167,7 @@ Behaviour was built test-first. The red and green runs are kept in `artifacts/`:
 | `tdd-07-red-coderabbit.log` | the CodeRabbit-round tests failing before the fixes |
 | `tdd-08-green-coderabbit.log` | the full suite passing after them |
 | `tdd-09-green-final-review.log` | the full suite passing after the final review round |
-| `tdd-10-red-final-pass.log` | the final-pass tests failing before the fixes |
+| `tdd-10-red-final-pass.log` | the first final-pass rule and save tests failing before their fixes |
 | `tdd-11-green-final-pass.log` | the full suite passing after them |
 | `smoke-browser.log` | the Playwright checks at 390px (WebKit) and 1280px (Chromium) |
 
@@ -185,7 +185,8 @@ refused, the recovery and backup round trip, deliberate identity switching that
 never carries one person's name to another, the dinner read-out, the offline
 shell, and the closing-date guard.
 
-Screenshots at 390px and 1280px are in `artifacts/`.
+Screenshots at 390px and 1280px are in `artifacts/`: join, today, picks, mission,
+bounties, vault, dinner, you, and the spectator view.
 
 ## Licence
 

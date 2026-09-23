@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { PARTY_NAME } from '../core/content';
 import { backupFilename } from '../core/backup';
@@ -22,8 +21,6 @@ export function Recovery({
   onImport: (text: string) => void;
   onReset: () => void;
 }) {
-  const fileInput = useRef<HTMLInputElement>(null);
-
   function pick(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -61,7 +58,7 @@ export function Recovery({
       <Card band="Restore" title="Load a backup instead">
         <div className="field">
           <label htmlFor="recover-file">Backup file</label>
-          <input id="recover-file" ref={fileInput} type="file" accept="application/json,.json" onChange={pick} />
+          <input id="recover-file" type="file" accept="application/json,.json" onChange={pick} />
           <p className="hint">A {backupFilename()} style file exported from the You page.</p>
         </div>
       </Card>

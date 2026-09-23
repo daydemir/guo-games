@@ -229,7 +229,7 @@ export function nextAction(state: State, now: number = Date.now()): NextAction {
     return { id: 'join', title: 'Join the party', body: 'Party code, your name, a color. Thirty seconds.', tab: null };
   }
   if (isReadOnly(state, now)) {
-    return { id: 'recap', title: 'The trip is closed', body: 'Everything here is the recap now. The award cards are at Dinner.', tab: 'dinner' };
+    return { id: 'recap', title: 'The trip is closed', body: 'Everything here is the recap now. Dinner has how the day ended.', tab: 'dinner' };
   }
   if (!isAttendee(who)) {
     return {

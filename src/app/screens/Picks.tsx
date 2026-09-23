@@ -22,7 +22,7 @@ export function Picks({ state, locked, run }: { state: State; locked: boolean; r
       title="Picks"
       lede={
         playing
-          ? `Hold up to ${MAX_PICKS} predictions at a time, ${left} open now. Then draft one fish. Points only, never money.`
+          ? `Hold up to ${MAX_PICKS} open predictions at a time. ${left} slot${left === 1 ? '' : 's'} free. Then draft one fish. Points only, never money.`
           : 'Everyone’s calls and the fish draft. Points only, never money.'
       }
     >

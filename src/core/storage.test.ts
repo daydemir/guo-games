@@ -98,3 +98,14 @@ it('treats a closing date it cannot read as an unreadable save, not an open trip
   expect(loaded.unreadable).toBe(true);
   expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(party));
 });
+
+it('does not mistake a read that throws for an empty device', () => {
+  const blocked = {
+    getItem: () => {
+      throw new DOMException('denied', 'SecurityError');
+    },
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  expect(() => load(blocked, NOW)).toThrow();
+});
