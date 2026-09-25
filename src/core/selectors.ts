@@ -12,11 +12,13 @@ import {
   isAttendee,
 } from './content';
 import type { Attendee, Bounty, Fish, Identity, Prediction } from './content';
-import { caseNumber, freeRoles, heldBounties, openPicks } from './actions';
+import { book, caseNumber, freeRoles, heldBounties, openPicks, payout, wallet } from './actions';
+import { sharesFor, yesPrice } from './market';
+import type { Side } from './market';
 import { CONTRABAND } from './bureau';
 import type { WitnessRole } from './bureau';
 import type { DocketKind } from './bureau';
-import type { DocketEntry, Memory, State } from './state';
+import type { DocketEntry, Market, Memory, State } from './state';
 import { isReadOnly } from './time';
 
 export const me = (state: State): Identity | null => state.session?.attendee ?? null;
@@ -378,4 +380,48 @@ export function testimonyView(state: State): TestimonyView | null {
     roles: freeRoles(round),
     entries: round.revealed ? round.entries : [],
   };
+}
+
+/* --------------------------------------------------------- wedding markets */
+
+export { wallet };
+
+export type MarketRow = {
+  market: Market;
+  /** The chance the market gives Yes, from 0 to 1. */
+  chance: number;
+  /** Pretend dollars traded, in cents. */
+  volume: number;
+  /** What the given player holds here, and what it paid once resolved, in cents. */
+  mine: { yes: number; no: number; cents: number; paid: number };
+};
+
+const MARKET_ORDER: Record<Market['status'], number> = { open: 0, closed: 1, resolved: 2, void: 3 };
+
+/** Open markets first, then closed, then settled; newest first within each. */
+export function marketBoard(state: State, who: Attendee | null): MarketRow[] {
+  return [...state.markets]
+    .sort((a, b) => MARKET_ORDER[a.status] - MARKET_ORDER[b.status] || b.at - a.at)
+    .map((market) => {
+      const trades = state.trades.filter((trade) => trade.market === market.id);
+      const mine = { yes: 0, no: 0, cents: 0, paid: 0 };
+      for (const trade of trades) {
+        if (trade.buyer !== who) continue;
+        mine[trade.side] += trade.shares;
+        mine.cents += trade.cents;
+        if (market.status === 'resolved' && market.outcome === trade.side) mine.paid += payout(trade);
+      }
+      return {
+        market,
+        chance: yesPrice(book(state, market.id)),
+        volume: trades.reduce((sum, trade) => sum + trade.cents, 0),
+        mine,
+      };
+    });
+}
+
+/** What a buy would get before it is made: shares, what they pay if right, and the average price. */
+export function quote(state: State, id: string, side: Side, dollars: number) {
+  const shares = sharesFor(book(state, id), side, dollars);
+  return { shares, payout: payout({ shares }), average: dollars / shares };
 }

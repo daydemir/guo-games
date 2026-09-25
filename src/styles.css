@@ -1108,6 +1108,85 @@ audio {
   margin: 0;
 }
 
+/* ---------------------------------------------------------- wedding markets */
+
+.market-prices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0;
+}
+
+.market-side {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  font-weight: 700;
+}
+
+.market-yes {
+  color: var(--palm);
+}
+
+.market-no {
+  color: var(--dusk);
+}
+
+.market-side.chosen.market-yes {
+  background-color: var(--palm);
+  border-color: var(--palm);
+  color: #07210f;
+}
+
+.market-side.chosen.market-no {
+  background-color: var(--dusk);
+  border-color: var(--dusk);
+  color: #2a0c16;
+}
+
+.market-price {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.05rem;
+}
+
+.market-buy {
+  margin-top: 0.4rem;
+}
+
+.market-buy .primary {
+  margin-top: 0.6rem;
+  width: 100%;
+}
+
+.market-glance {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+}
+
+.market-glance li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.market-glance li:last-child {
+  border-bottom: none;
+}
+
+.market-glance .market-price {
+  flex: none;
+  color: var(--palm);
+  font-size: 0.9rem;
+}
+
 /* ------------------------------------------------------------- wider than a phone */
 
 @media (min-width: 40rem) {

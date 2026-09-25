@@ -12,6 +12,7 @@ import {
   PREDICTIONS,
 } from './content';
 import { mediaSchema } from './media';
+import { BUY_DOLLARS, MAX_CLOSES_CHARS, MAX_QUESTION_CHARS, sharesFor } from './market';
 import {
   ACT_NUMBERS,
   DOCKET_KINDS,
@@ -136,6 +137,36 @@ export const testimonySchema = z.preprocess((value) => {
 }, testimonyShape);
 export type Testimony = z.infer<typeof testimonySchema>;
 
+/** A Wedding Market: one yes or no question, resolved by a Clerk. */
+export const marketSchema = z
+  .object({
+    id: z.string(),
+    at: z.number(),
+    creator: attendee,
+    question: z.string().min(1).max(MAX_QUESTION_CHARS),
+    closes: z.string().max(MAX_CLOSES_CHARS),
+    status: z.enum(['open', 'closed', 'resolved', 'void']),
+    outcome: z.enum(['yes', 'no']).optional(),
+  })
+  .refine((market) => (market.status === 'resolved') === (market.outcome !== undefined), 'Only a resolved market has an outcome.');
+export type Market = z.infer<typeof marketSchema>;
+
+/**
+ * One buy, in pretend cents. Trades are never edited: prices and every balance
+ * are worked out from them, so a resolution pays out exactly once, by
+ * construction, and there is no second ledger to drift.
+ */
+export const tradeSchema = z.object({
+  id: z.string(),
+  at: z.number(),
+  market: z.string(),
+  buyer: attendee,
+  side: z.enum(['yes', 'no']),
+  cents: z.union(BUY_DOLLARS.map((amount) => z.literal(amount * 100))),
+  shares: z.number().positive(),
+});
+export type Trade = z.infer<typeof tradeSchema>;
+
 export const stateSchema = z.object({
   version: z.literal(STATE_VERSION),
   session: sessionSchema.nullable().default(null),
@@ -164,6 +195,8 @@ export const stateSchema = z.object({
   /** Case numbers only go up, so a struck number is never handed out again. */
   docketSeq: z.number().int().nonnegative().default(0),
   testimony: testimonySchema.nullable().default(null),
+  markets: z.array(marketSchema).default([]),
+  trades: z.array(tradeSchema).default([]),
 });
 
 export type State = z.infer<typeof stateSchema>;
@@ -230,9 +263,19 @@ export function demoState(now: number = Date.now()): State {
     },
   ];
 
+  // One live market, already trading, so the price has moved off 50 cents.
+  const market = id();
+  const firstBuy = sharesFor({ yes: 0, no: 0 }, 'yes', 10);
+  const trades = [
+    { id: id(), at: minutes(30), market, buyer: 'Simon', side: 'yes', cents: 1000, shares: firstBuy },
+    { id: id(), at: minutes(18), market, buyer: 'Jack', side: 'no', cents: 500, shares: sharesFor({ yes: firstBuy, no: 0 }, 'no', 5) },
+  ];
+
   return stateSchema.parse({
     version: STATE_VERSION,
     session: null,
+    markets: [{ id: market, at: minutes(45), creator: 'Nick', question: 'Does the DJ play the Macarena?', closes: 'Last song', status: 'open' }],
+    trades,
     picks: {
       Nick: { flights: 'yes', fishing: 'yes' },
       Jack: { flights: 'yes', nap: 'no', dinner: 'yes' },

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { isAttendee } from '../../core/content';
 import { ACTS, ACT_NUMBERS, CASE, PUBLIC_KINDS } from '../../core/bureau';
+import { priceLabel } from '../../core/market';
 import type { Act } from '../../core/bureau';
 import type { Action } from '../../core/actions';
 import {
   caseFile,
   directive,
+  marketBoard,
   isOrganizer,
   me,
   myBounty,
@@ -71,6 +73,8 @@ export function Today({
       </Card>
 
       <CaseCard state={state} locked={locked} run={run} onGo={onGo} />
+
+      <MarketsCard state={state} onGo={onGo} />
 
       {fish ? (
         <Card band="Your augury" title={fish.name}>
@@ -272,5 +276,27 @@ function CaseFile({ state, now, locked, run }: { state: State; now: number; lock
         </button>
       ) : null}
     </section>
+  );
+}
+
+/** The live Wedding Markets at a glance, and the way in. Hidden until one opens. */
+function MarketsCard({ state, onGo }: { state: State; onGo: Go }) {
+  const live = marketBoard(state, null).filter((row) => row.market.status === 'open');
+  if (live.length === 0) return null;
+  return (
+    <Card band="Wedding Markets" title={`${live.length} open market${live.length === 1 ? '' : 's'}`}>
+      <ul className="market-glance">
+        {live.slice(0, 3).map(({ market, chance }) => (
+          <li key={market.id}>
+            <span>{market.question}</span>
+            <span className="market-price">Yes {priceLabel(chance)}</span>
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="primary" onClick={() => onGo('picks', 'markets')}>
+        Trade
+      </button>
+      <p className="hint">Pretend dollars only. Nothing real changes hands.</p>
+    </Card>
   );
 }

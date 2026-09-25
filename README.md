@@ -6,8 +6,9 @@ stories, a mock-official Bureau investigating a fish that got away, and a long
 dinner where it all gets settled.
 
 It is a shared attention engine, not a scoreboard with a party attached. There is
-no money, no real-money mechanic, no stock ticker, and no reason to hold the phone
-for more than a minute at a time.
+no real money, no real-money mechanic, and no reason to hold the phone for more
+than a minute at a time. The Wedding Markets trade in pretend dollars that exist
+only inside the game.
 
 ## Commands
 
@@ -62,6 +63,29 @@ Nothing syncs between phones, so the design leans on that:
   Clerk copies from Today, with a link such as `#mission`, `#picks/dock-draft`
   or `#card/exhibit-a`. A link survives the join screen.
 
+## Wedding Markets
+
+Yes or no questions that trade like Kalshi, in **pretend wedding dollars**.
+Everyone starts with $100. No real money is deposited, withdrawn, paid out or
+transferred, pretend dollars are never redeemable, and nothing leaves the phone:
+it is a private party game.
+
+- Anyone playing opens a market with a question and, optionally, when it closes.
+  It starts at 50 cents.
+- Tap Yes or No, pick $1, $5, $10 or $25, read the quote (shares, average price,
+  what it pays if right), and buy. Every buy moves the price.
+- There is no counterparty to find. An automatic market maker (a logarithmic
+  market scoring rule, `src/core/market.ts`) always takes the other side, which
+  matters because nothing syncs between phones.
+- A Clerk closes trading and resolves Yes, No or Void, each behind a second tap.
+  A winning share pays one pretend dollar; a void refunds every buy. The feed
+  records it all.
+- Balances are never stored. They are worked out from the trades, which are
+  never edited, so a resolution pays out exactly once and a second one is
+  refused. A Clerk's phone can act as the trading desk and buy for whoever holds it.
+
+Markets live on Picks (`#picks/markets`), and Today shows the open ones.
+
 ## Architecture
 
 The rules and the interface are kept apart on purpose. Every rule lives in
@@ -72,6 +96,7 @@ render state and dispatch intent, and nothing else.
 src/core/       the game, with no React in it
   content.ts      the roster, fish, predictions, bounties, missions, all copy
   bureau.ts       the Bureau: acts, memos, Bench cards, orders, witness roles
+  market.ts       Wedding Markets pricing, in pretend dollars
   state.ts        the Zod schema, an empty party, and the seeded demo party
   actions.ts      join() and act(): the only ways a party can change
   selectors.ts    derived views: scores, boards, awards, the single next action
@@ -96,7 +121,10 @@ keeps an unreadable save from being overwritten on mount.
 - **Identity is a demonstration, not authentication.** Anyone holding the device
   can switch to anyone on the roster. That is deliberate for a phone that gets
   passed around a table, and it is stated in the interface.
-- **Points only.** Nothing accepts an amount, a stake or a payout.
+- **No real money.** Predictions, bounties and missions score points. Wedding
+  Markets use pretend dollars with no value: no real-money deposits,
+  withdrawals, payouts or transfers, no redemption, and no payment system of
+  any kind.
 - **Opt-in, always.** Nothing asks for a dangerous stunt, an ocean dare, a
   drinking challenge or pressure on a stranger. Anyone playing can void anything that is
   still open, with no points lost and no explanation owed. Once a prediction is
@@ -105,9 +133,12 @@ keeps an unreadable save from being overwritten on mount.
   Spectator is a real role.
 - **Private stays private.** Mission text, vault stories, sealed notes,
   Classified Orders, Case File text and sworn testimony never reach the shared
-  feed. Testimony is stored under a random role with no author, the list of who
-  has sworn is kept only to stop a second account and is dropped at the reveal,
-  so neither the save nor a backup can say who wrote what. A struck Case File
+  feed. Testimony is stored under a random role with no author, and the roll of
+  who has sworn is kept only to stop a second account. Nobody can read who wrote
+  what in the app. Before the reveal, though, someone with direct access to the
+  device storage or to backups could compare two copies taken either side of one
+  account and match that name to it. At the reveal the roll is dropped, and every
+  later save and backup holds no link between a name and an account. A struck Case File
   entry is deleted, not hidden. There are tests that assert exactly this.
 - **Tabs share one save.** A memo link often opens a second tab. Every command
   re-reads the save before it runs, and other open tabs follow along through
@@ -119,8 +150,8 @@ keeps an unreadable save from being overwritten on mount.
   reverse only partly holds: an older build refuses a save that uses anything
   it does not know, such as a pick on a new prophecy, a new bounty, or a memory
   filed under Tonight or Tomorrow, and shows the recovery screen rather than
-  overwriting it. A save it can open loses its Case File, testimony and act on
-  that build's next write. Avoid rolling back mid-trip.
+  overwriting it. A save it can open loses its Case File, testimony, act and
+  markets on that build's next write. Avoid rolling back mid-trip.
 - **The kill switch is real.** After `settings.expiresAt`, every mutation is
   refused and the app is a read-only recap. Organizers can move the date forward
   while the trip is live, and never into the past.
