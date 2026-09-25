@@ -1,0 +1,28 @@
+{
+  "version": 3,
+  "session": { "attendee": "Jack", "name": "Jack", "color": "palm" },
+  "settings": { "hideRankings": true, "awards": "stories", "expiresAt": "2027-07-06T10:00:00.000Z" },
+  "dinner": false,
+  "picks": { "Jack": { "fishing": "yes", "nap": "no" }, "Nick": { "fishing": "no" } },
+  "results": { "flights": "yes" },
+  "draft": { "Jack": "marlin", "Nick": "ono" },
+  "bounties": { "gratitude": { "owner": "Simon", "status": "confirmed", "witness": "Nate" } },
+  "missions": { "Jack": "accepted" },
+  "vault": [
+    {
+      "id": "m1",
+      "at": 1790300000000,
+      "author": "Jack",
+      "about": "Kevin",
+      "moment": "Fishing",
+      "text": "Kevin named the boat before we left the dock.",
+      "media": null,
+      "revealed": false
+    }
+  ],
+  "future": { "Nate": "Kevin will still be the one who books the boat." },
+  "feed": [
+    { "id": "f2", "at": 1790300100000, "actor": "Jack", "text": "Jack drafted Marlin." },
+    { "id": "f1", "at": 1790300000000, "actor": "Jack", "text": "Jack joined the party." }
+  ]
+}

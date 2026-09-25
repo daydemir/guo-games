@@ -12,6 +12,15 @@ import {
   PREDICTIONS,
 } from './content';
 import { mediaSchema } from './media';
+import { BUY_DOLLARS, MAX_CLOSES_CHARS, MAX_QUESTION_CHARS, sharesFor } from './market';
+import {
+  ACT_NUMBERS,
+  DOCKET_KINDS,
+  MAX_DOCKET_CHARS,
+  MAX_SUBJECT_CHARS,
+  MAX_TESTIMONY_CHARS,
+  WITNESS_ROLES,
+} from './bureau';
 
 export const STATE_VERSION = 3;
 
@@ -64,6 +73,8 @@ export const settingsSchema = z.object({
     .string()
     .refine((value) => !Number.isNaN(Date.parse(value)))
     .default(DEFAULT_EXPIRES_AT),
+  /** Which act of the Bureau is running. Set by hand, because the schedule is not known. */
+  act: z.union(ACT_NUMBERS.map((act) => z.literal(act))).default(1),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -71,7 +82,98 @@ export const DEFAULT_SETTINGS: Settings = {
   hideRankings: true,
   awards: 'stories',
   expiresAt: DEFAULT_EXPIRES_AT,
+  act: 1,
 };
+
+/**
+ * One line in the Case File. Public on the phone it was filed on, and struck
+ * outright rather than hidden, so a struck line exists nowhere in the save.
+ */
+export const docketEntrySchema = z.object({
+  id: z.string(),
+  at: z.number(),
+  author: attendee,
+  seq: z.number().int().positive(),
+  kind: z.enum(DOCKET_KINDS),
+  text: z.string().min(1).max(MAX_DOCKET_CHARS),
+});
+export type DocketEntry = z.infer<typeof docketEntrySchema>;
+
+/**
+ * Seven Witnesses: sealed accounts of one small event, passed round the Bench
+ * phone. Nothing stored links a name to an account, so neither the save nor a
+ * backup can unseal it:
+ * - `entries` hold only a random role and the words, kept in role order rather
+ *   than the order sworn, with no author and no timestamp.
+ * - `sworn` is who has testified, in roster order, only so nobody testifies
+ *   twice. It is emptied at the reveal, when nobody can testify any more.
+ */
+const testimonyShape = z.object({
+  subject: z.string().min(1).max(MAX_SUBJECT_CHARS),
+  revealed: z.boolean(),
+  sworn: z.array(attendee).default([]),
+  entries: z.array(
+    z.object({
+      id: z.string(),
+      role: z.enum(WITNESS_ROLES),
+      text: z.string().min(1).max(MAX_TESTIMONY_CHARS),
+    }),
+  ),
+});
+
+export const testimonySchema = testimonyShape;
+
+/**
+ * The branch's first build kept each account's author, under a role picked from
+ * a hash of that author's name and the event, so the role alone could name its
+ * writer. Such a round, recognised by having no `sworn` roll, is made safe:
+ * - not yet read out: dropped. Its roles cannot be fixed without changing what
+ *   the witnesses were told, and they can simply testify again.
+ * - already read out: kept, with authors and timestamps gone and roles dealt
+ *   again in the alphabetical order of the words, which says nothing about who
+ *   wrote them.
+ */
+function migrateTestimony(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || 'sworn' in value) return value;
+  const round = value as { revealed?: unknown; entries?: unknown };
+  if (!round.revealed || !Array.isArray(round.entries)) return null;
+  const entries = (round.entries as { id?: unknown; text?: unknown }[])
+    .map(({ id, text }) => ({ id, text }))
+    .sort((a, b) => String(a.text).localeCompare(String(b.text)))
+    .map((entry, index) => ({ ...entry, role: WITNESS_ROLES[index] }));
+  return { ...round, sworn: [], entries };
+}
+export type Testimony = z.infer<typeof testimonySchema>;
+
+/** A Wedding Market: one yes or no question, resolved by a Clerk. */
+export const marketSchema = z
+  .object({
+    id: z.string(),
+    at: z.number(),
+    creator: attendee,
+    question: z.string().min(1).max(MAX_QUESTION_CHARS),
+    closes: z.string().max(MAX_CLOSES_CHARS),
+    status: z.enum(['open', 'closed', 'resolved', 'void']),
+    outcome: z.enum(['yes', 'no']).optional(),
+  })
+  .refine((market) => (market.status === 'resolved') === (market.outcome !== undefined), 'Only a resolved market has an outcome.');
+export type Market = z.infer<typeof marketSchema>;
+
+/**
+ * One buy, in pretend cents. Trades are never edited: prices and every balance
+ * are worked out from them, so a resolution pays out exactly once, by
+ * construction, and there is no second ledger to drift.
+ */
+export const tradeSchema = z.object({
+  id: z.string(),
+  at: z.number(),
+  market: z.string(),
+  buyer: attendee,
+  side: z.enum(['yes', 'no']),
+  cents: z.union(BUY_DOLLARS.map((amount) => z.literal(amount * 100))),
+  shares: z.number().positive(),
+});
+export type Trade = z.infer<typeof tradeSchema>;
 
 export const stateSchema = z.object({
   version: z.literal(STATE_VERSION),
@@ -95,6 +197,14 @@ export const stateSchema = z.object({
   vault: z.array(memorySchema).default([]),
   future: z.partialRecord(attendee, z.string().max(MAX_FUTURE_CHARS)).default({}),
   feed: z.array(feedEventSchema).default([]),
+  // Added for the Bureau without a version bump: every field defaults, so an
+  // older save opens as-is and an older build simply strips these keys.
+  docket: z.array(docketEntrySchema).default([]),
+  /** Case numbers only go up, so a struck number is never handed out again. */
+  docketSeq: z.number().int().nonnegative().default(0),
+  testimony: z.preprocess(migrateTestimony, testimonySchema.nullable()).default(null),
+  markets: z.array(marketSchema).default([]),
+  trades: z.array(tradeSchema).default([]),
 });
 
 export type State = z.infer<typeof stateSchema>;
@@ -161,9 +271,19 @@ export function demoState(now: number = Date.now()): State {
     },
   ];
 
+  // One live market, already trading, so the price has moved off 50 cents.
+  const market = id();
+  const firstBuy = sharesFor({ yes: 0, no: 0 }, 'yes', 10);
+  const trades = [
+    { id: id(), at: minutes(30), market, buyer: 'Simon', side: 'yes', cents: 1000, shares: firstBuy },
+    { id: id(), at: minutes(18), market, buyer: 'Jack', side: 'no', cents: 500, shares: sharesFor({ yes: firstBuy, no: 0 }, 'no', 5) },
+  ];
+
   return stateSchema.parse({
     version: STATE_VERSION,
     session: null,
+    markets: [{ id: market, at: minutes(45), creator: 'Nick', question: 'Does the DJ play the Macarena?', closes: 'Last song', status: 'open' }],
+    trades,
     picks: {
       Nick: { flights: 'yes', fishing: 'yes' },
       Jack: { flights: 'yes', nap: 'no', dinner: 'yes' },

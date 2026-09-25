@@ -145,3 +145,64 @@ it('never writes to a device it could not read, in case a party is hiding there'
   expect(read()).toBe('{"version":3,"a real":"party"}');
   expect(result.current.unsaved).toMatch(/not saving/i);
 });
+
+/* Two tabs, one save: a memo link opens a second tab while the first stays alive. */
+
+const incidents = (raw: string | null) =>
+  (JSON.parse(raw ?? '{}').docket ?? []).map((entry: { seq: number; text: string }) => `${entry.seq} ${entry.text}`);
+
+function twoTabs() {
+  const phone = device();
+  const tabA = renderHook(() => useParty(phone.storage)).result;
+  reactAct(() => void tabA.current.signIn('GUO27', 'Deniz', 'Deniz', 'sea'));
+  const tabB = renderHook(() => useParty(phone.storage)).result;
+  return { ...phone, tabA, tabB };
+}
+
+it('runs every command on the save as it is now, so a second tab never erases the first', () => {
+  const { tabA, tabB, read } = twoTabs();
+  reactAct(() => void tabB.current.run({ type: 'file', kind: 'incident', text: 'Filed in tab B.' }));
+
+  // Tab A has not heard about it, and files anyway.
+  reactAct(() => void tabA.current.run({ type: 'file', kind: 'incident', text: 'Filed in tab A.' }, (next) => `seq ${next.docketSeq}`));
+
+  expect(incidents(read())).toEqual(['1 Filed in tab B.', '2 Filed in tab A.']);
+  expect(tabA.current.note).toBe('seq 2');
+  expect(tabA.current.state.docket).toHaveLength(2);
+});
+
+it('picks up another tab\'s write as soon as the browser announces it', () => {
+  const { tabA, tabB } = twoTabs();
+  reactAct(() => void tabB.current.run({ type: 'file', kind: 'incident', text: 'Filed in tab B.' }));
+  expect(tabA.current.state.docket).toHaveLength(0);
+
+  reactAct(() => void window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY })));
+  expect(tabA.current.state.docket.map((entry) => entry.text)).toEqual(['Filed in tab B.']);
+
+  // Unrelated keys are left alone.
+  reactAct(() => void window.dispatchEvent(new StorageEvent('storage', { key: 'something-else' })));
+  expect(tabA.current.state.docket).toHaveLength(1);
+});
+
+it('follows a reset made in another tab instead of writing the old party back', () => {
+  const { tabA, tabB, read } = twoTabs();
+  reactAct(() => tabB.current.reset());
+  reactAct(() => void window.dispatchEvent(new StorageEvent('storage', { key: null })));
+
+  expect(tabA.current.state.session).toBeNull();
+  expect(read()).toBeNull();
+});
+
+it('refuses to write over a save another tab left unreadable, and offers the rescue', () => {
+  const { tabA, storage, read } = twoTabs();
+  storage.setItem(STORAGE_KEY, '{{{ half a vault');
+
+  let ok = true;
+  reactAct(() => {
+    ok = tabA.current.run({ type: 'draft', fish: 'ono' });
+  });
+
+  expect(ok).toBe(false);
+  expect(read()).toBe('{{{ half a vault');
+  expect(tabA.current.recovery?.raw).toBe('{{{ half a vault');
+});

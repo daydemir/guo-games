@@ -109,3 +109,32 @@ it('does not mistake a read that throws for an empty device', () => {
   };
   expect(() => load(blocked, NOW)).toThrow();
 });
+
+import preBureau from '../../e2e/fixtures/pre-bureau-save.json';
+
+it('opens a save written before the Bureau existed, untouched, with the Bureau at its defaults', () => {
+  const raw = JSON.stringify(preBureau);
+  const loaded = load(memoryStorage(raw), NOW);
+
+  expect(loaded.unreadable).toBe(false);
+  expect(loaded.state.settings.act).toBe(1);
+  expect(loaded.state.docket).toEqual([]);
+  expect(loaded.state.docketSeq).toBe(0);
+  expect(loaded.state.testimony).toBeNull();
+  expect(loaded.state.feed).toEqual(preBureau.feed);
+  expect(loaded.state.vault).toEqual(preBureau.vault);
+  expect(loaded.state.picks).toEqual(preBureau.picks);
+});
+
+it('still opens a Bureau save after an older build has stripped the keys it does not know', () => {
+  let state = act(as('Deniz'), { type: 'setAct', act: 3 }, NOW);
+  state = act(state, { type: 'file', kind: 'incident', text: 'The cooler lid.' }, NOW);
+  const older = JSON.parse(JSON.stringify(state));
+  for (const key of ['docket', 'docketSeq', 'testimony']) delete older[key];
+  delete older.settings.act;
+
+  const loaded = load(memoryStorage(JSON.stringify(older)), NOW);
+  expect(loaded.unreadable).toBe(false);
+  expect(loaded.state.settings.act).toBe(1);
+  expect(loaded.state.feed).toEqual(state.feed);
+});

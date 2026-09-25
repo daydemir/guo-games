@@ -40,7 +40,11 @@ export function Dinner({
   return (
     <Screen
       title="Dinner"
-      lede={state.dinner ? 'Dinner is open. Settle, reveal, and toast.' : 'Sealed until an organizer opens it.'}
+      lede={
+        state.dinner
+          ? 'The Tribunal’s table is open. Settle, reveal, and toast.'
+          : 'The Tribunal’s table: stories, award cards, and notes for 2032. Sealed until an organizer opens it.'
+      }
     >
       {organizer && !state.dinner && !locked ? (
         <Card band="Organizer" title="Open dinner" tone="live">

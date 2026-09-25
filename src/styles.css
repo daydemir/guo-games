@@ -881,9 +881,319 @@ audio {
   color: var(--sand);
 }
 
+/* ----------------------------------------------------------------- bureau */
+
+.oracle-text {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+}
+
+.segmented button {
+  padding: 0 0.5rem;
+  font-size: 0.82rem;
+}
+
+.segmented button[aria-pressed='true'] {
+  background-color: var(--sand);
+  border-color: var(--sand);
+  color: #2a1c05;
+}
+
+.case-no {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+  letter-spacing: 0.04em;
+  color: var(--sand);
+}
+
+.case-file li {
+  align-items: flex-start;
+}
+
+.case-meta {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.case-meta .quiet {
+  margin-right: -0.5rem;
+}
+
+/* ------------------------------------------------------------------ bench */
+
+.bench {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+.bench-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem var(--gutter);
+  border-bottom: 1px solid var(--rule);
+  background-color: var(--ink-2);
+}
+
+.bench-head h1 {
+  font-size: 1.15rem;
+}
+
+.bench-count {
+  margin: 0.15rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--paper-dim);
+}
+
+.bench-head .quiet {
+  margin-left: auto;
+}
+
+.bench-stage {
+  flex: 1;
+  width: 100%;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+}
+
+.bench-stage:focus {
+  outline: none;
+}
+
+.bench-card {
+  padding: 1.1rem;
+  background-color: var(--ink-2);
+  border: 1px solid var(--coral);
+  border-radius: var(--card-radius);
+}
+
+.bench-card .card-band {
+  color: var(--coral);
+}
+
+.bench-card h2 {
+  font-size: 1.75rem;
+  margin: 0 0 0.9rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.bench-card h2:focus {
+  outline: none;
+}
+
+.bench-line {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  margin-bottom: 0.9rem;
+}
+
+.bench-list {
+  margin: 0.25rem 0 0.9rem;
+  padding-left: 1.2rem;
+  font-size: 1.05rem;
+}
+
+.bench-list li {
+  margin-bottom: 0.55rem;
+}
+
+.bench-form {
+  margin-top: 1rem;
+}
+
+.bench-form .hint + form,
+.bench-form .hint + .field {
+  margin-top: 0.9rem;
+}
+
+.bench-matter {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.1rem;
+  color: var(--sand);
+}
+
+.bench-role {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.3rem;
+  color: var(--coral);
+}
+
+.bench-cue {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sand);
+}
+
+.bench-controls {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1.4fr;
+  gap: 0.5rem;
+  padding: 0.5rem var(--gutter) calc(0.5rem + env(safe-area-inset-bottom));
+  background-color: var(--ink-2);
+  border-top: 1px solid var(--rule);
+}
+
+.bench-controls button {
+  min-height: 52px;
+}
+
+.vote {
+  margin-top: 1rem;
+}
+
+.vote-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.vote-option {
+  display: grid;
+  gap: 0.2rem;
+  place-items: center;
+  min-height: 112px;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vote-count {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--sand);
+}
+
+.testimony {
+  margin: 0 0 0.8rem;
+  padding: 0.8rem;
+  background-color: var(--ink);
+  border-left: 3px solid var(--sand);
+  border-radius: 4px;
+}
+
+.testimony h3 {
+  font-size: 0.8rem;
+  font-family: inherit;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sand);
+  margin-bottom: 0.35rem;
+}
+
+.testimony p {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------- wedding markets */
+
+.market-prices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0;
+}
+
+.market-side {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  margin: 0;
+  padding: 0 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  font-weight: 700;
+}
+
+.market-yes {
+  color: var(--palm);
+}
+
+.market-no {
+  color: var(--dusk);
+}
+
+.market-side.chosen.market-yes {
+  background-color: var(--palm);
+  border-color: var(--palm);
+  color: #07210f;
+}
+
+.market-side.chosen.market-no {
+  background-color: var(--dusk);
+  border-color: var(--dusk);
+  color: #2a0c16;
+}
+
+.market-price {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.05rem;
+}
+
+.market-buy {
+  margin-top: 0.4rem;
+}
+
+.market-buy .primary {
+  margin-top: 0.6rem;
+  width: 100%;
+}
+
+.market-glance {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+}
+
+.market-glance li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.market-glance li:last-child {
+  border-bottom: none;
+}
+
+.market-glance .market-price {
+  flex: none;
+  color: var(--palm);
+  font-size: 0.9rem;
+}
+
 /* ------------------------------------------------------------- wider than a phone */
 
 @media (min-width: 40rem) {
+  .segmented {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .two-up {
     grid-template-columns: 1fr 1fr;
   }
@@ -946,6 +1256,24 @@ audio {
 
   .screen-head h2 {
     font-size: 2rem;
+  }
+
+  .bench {
+    padding-bottom: 0;
+  }
+
+  .bench-controls {
+    position: static;
+    max-width: 44rem;
+    width: 100%;
+    margin: 0 auto 2rem;
+    padding-inline: 1rem;
+    background-color: transparent;
+    border-top: none;
+  }
+
+  .bench-card h2 {
+    font-size: 2.2rem;
   }
 }
 

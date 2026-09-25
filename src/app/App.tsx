@@ -14,6 +14,8 @@ import { Mission } from './screens/Mission';
 import { Vault } from './screens/Vault';
 import { Dinner } from './screens/Dinner';
 import { You } from './screens/You';
+import { Bench } from './Bench';
+import { HOME, isBenchEcho, parseHash } from './route';
 
 /** In the order the day runs. You is reached from the masthead. */
 const TABS: Tab[] = [
@@ -25,15 +27,20 @@ const TABS: Tab[] = [
   { id: 'dinner', label: 'Dinner' },
 ];
 
+const clearHash = () => history.replaceState(null, '', `${location.pathname}${location.search}`);
+
 /**
  * The whole app. State lives in one hook, rules live in core, and this file
  * only decides which screen is on and where messages go.
  */
 export function App() {
   const party = useParty();
-  const [tab, setTab] = useState('today');
-  /** A section to land on inside the new tab, such as the Dock Draft on Picks. */
-  const [anchor, setAnchor] = useState<string | null>(null);
+  // A link from the group chat, such as #card/exhibit-a, is read before join and
+  // survives it, so whoever taps it lands where the memo pointed.
+  const [route, setRoute] = useState(() => parseHash(location.hash) ?? HOME);
+  const { tab, anchor } = route;
+  /** Counts links followed, so each one gives the Bench a fresh start. */
+  const [visit, setVisit] = useState(0);
   const { state, problem, note, dismiss, run, signIn, reset, now, recovery, unsaved } = party;
   const locked = isReadOnly(state, now);
 
@@ -55,15 +62,40 @@ export function App() {
   const signedIn = Boolean(state.session);
   const mounted = useRef(false);
   useEffect(() => {
+    // Not on first render, unless a memo link pointed at a section.
     if (!mounted.current) {
       mounted.current = true;
-      return;
+      if (!anchor) return;
     }
-    if (!signedIn) return;
+    // The Bench moves focus to its own card.
+    if (!signedIn || tab === 'bench') return;
     const target = (anchor && document.getElementById(anchor)) || document.getElementById('main');
     target?.focus();
     if (anchor) target?.scrollIntoView({ block: 'start' });
   }, [signedIn, tab, anchor]);
+
+  // Links tapped while the app is already open. Anything that is not a route,
+  // such as the in-page jump to the Dock Draft, is left to the browser.
+  // A link is read once, then the address goes clean, so a reload or relaunch
+  // starts on Today. Only the Bench keeps its card in the hash.
+  useEffect(() => {
+    const consume = () => {
+      const next = parseHash(location.hash);
+      if (next && next.tab !== 'bench') clearHash();
+      return next;
+    };
+    const onHash = () => {
+      if (isBenchEcho(location.hash)) return;
+      const next = consume();
+      if (!next) return;
+      setRoute(next);
+      // A tapped link always lands on its card, even one the Bench opened on earlier.
+      setVisit((count) => count + 1);
+    };
+    consume();
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   if (recovery) {
     return (
@@ -83,8 +115,41 @@ export function App() {
   }
 
   function go(next: string, section: string | null = null) {
-    setTab(next);
-    setAnchor(section);
+    setRoute({ tab: next, anchor: section });
+    clearHash();
+  }
+
+  const banner = (
+    <div className="banners">
+      {locked ? (
+        <p className="banner banner-closed" role="status">
+          The trip has closed. This is a read-only recap, and nothing can be changed.
+        </p>
+      ) : null}
+      {unsaved ? (
+        <p className="banner banner-closed" role="status">
+          {unsaved}
+        </p>
+      ) : null}
+      {problem ? (
+        <p className="banner banner-problem" role="alert">
+          {problem}
+          <button type="button" onClick={dismiss}>
+            Dismiss
+          </button>
+        </p>
+      ) : null}
+      {note && !problem ? (
+        <p className="banner banner-note" role="status">
+          {note}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  if (tab === 'bench') {
+    // Keyed so every followed link, or convening again, starts the deck afresh.
+    return <Bench key={`${anchor ?? 'bench'}-${visit}`} state={state} run={run} start={anchor} onGo={go} banner={banner} />;
   }
 
   return (
@@ -93,35 +158,9 @@ export function App() {
       active={tab}
       onNavigate={go}
       holder={{ name: state.session.name, color: state.session.color }}
-      banner={
-        <div className="banners">
-          {locked ? (
-            <p className="banner banner-closed" role="status">
-              The trip has closed. This is a read-only recap, and nothing can be changed.
-            </p>
-          ) : null}
-          {unsaved ? (
-            <p className="banner banner-closed" role="status">
-              {unsaved}
-            </p>
-          ) : null}
-          {problem ? (
-            <p className="banner banner-problem" role="alert">
-              {problem}
-              <button type="button" onClick={dismiss}>
-                Dismiss
-              </button>
-            </p>
-          ) : null}
-          {note && !problem ? (
-            <p className="banner banner-note" role="status">
-              {note}
-            </p>
-          ) : null}
-        </div>
-      }
+      banner={banner}
     >
-      {tab === 'today' ? <Today state={state} now={now} onGo={go} /> : null}
+      {tab === 'today' ? <Today state={state} now={now} locked={locked} run={run} onGo={go} /> : null}
       {tab === 'picks' ? <Picks state={state} locked={locked} run={run} /> : null}
       {tab === 'bounties' ? <Bounties state={state} locked={locked} run={run} /> : null}
       {tab === 'mission' ? <Mission state={state} locked={locked} run={run} /> : null}

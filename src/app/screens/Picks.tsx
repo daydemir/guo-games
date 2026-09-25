@@ -3,8 +3,10 @@ import { draftBoard, isOrganizer, me, myFish, picksLeft, predictionBoard } from 
 import type { Action } from '../../core/actions';
 import type { State } from '../../core/state';
 import { Card, Screen, Tally } from '../../ui/primitives';
+import { Markets } from './Markets';
+import type { Note } from '../useParty';
 
-type Run = (action: Action, note?: string) => boolean;
+type Run = (action: Action, note?: Note) => boolean;
 
 const RESULT_TONE = { yes: 'settled', no: 'settled', void: 'void' } as const;
 
@@ -22,13 +24,16 @@ export function Picks({ state, locked, run }: { state: State; locked: boolean; r
       title="Picks"
       lede={
         playing
-          ? `Hold up to ${MAX_PICKS} open predictions at a time. ${left} slot${left === 1 ? '' : 's'} free. Then draft one fish. Points only, never money.`
-          : 'Everyone’s calls and the fish draft. Points only, never money.'
+          ? `Wedding Markets, predictions, prophecies and the Dock Draft. Hold up to ${MAX_PICKS} open predictions at a time, ${left} slot${left === 1 ? '' : 's'} free. Deliberately fulfilling a prophecy voids it. Points and pretend dollars, never real money.`
+          : 'Everyone’s calls, the markets and the fish draft. Points and pretend dollars, never real money.'
       }
     >
       <p className="jump">
-        <a href="#dock-draft">Skip to the Dock Draft</a>
+        Skip to <a href="#predictions">the predictions</a> or <a href="#dock-draft">the Dock Draft</a>
       </p>
+      {/* Keyed by identity, so a Clerk's "Buying for" never carries over to someone else. */}
+      <Markets key={me(state) ?? 'nobody'} state={state} locked={locked} run={run} />
+      <span id="predictions" />
       <Predictions state={state} locked={locked} run={run} />
       <DockDraft state={state} locked={locked} run={run} />
     </Screen>
@@ -125,8 +130,8 @@ function DockDraft({ state, locked, run }: { state: State; locked: boolean; run:
       </h3>
       <p className="hint group-lede">
         {mine
-          ? `You are on ${mine.name}. Change it any time before the boat leaves.`
-          : 'One species each. Nobody else can have yours.'}
+          ? `You are on ${mine.name}, and its note is your augury. You can still switch.`
+          : 'One species each. Nobody else can have yours. The note on your fish is your augury.'}
       </p>
       <ul className="board" aria-label="Dock draft board">
         {board.map(({ fish, drafter }) => {

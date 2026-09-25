@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs",
+    "build:pages": "GUO_BASE=/guo-games/ npm run build",
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "npm run build && playwright test"
   },

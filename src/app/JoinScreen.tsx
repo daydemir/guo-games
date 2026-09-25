@@ -35,8 +35,8 @@ export function JoinScreen({
         </p>
         <h1>{PARTY_NAME}</h1>
         <p className="lede">
-          One day in Maui, lightly organized. A few calls, one quiet act, phone away, and a long dinner
-          where it all gets settled.
+          The rest of the weekend, lightly organized. A few calls, one quiet act, a fish under official
+          investigation, and a long dinner where it all gets settled.
         </p>
       </header>
 
