@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { act } from './actions';
-import { energyDipSpark, nextAction } from './selectors';
+import { directive, nextAction } from './selectors';
+import { DIRECTIVES } from './content';
 import { emptyState } from './state';
 import { NOW, as } from './fixtures';
 
@@ -45,10 +46,12 @@ it('turns the home screen into a recap pointer once the trip closes', () => {
   expect(nextAction(state, Date.parse(state.settings.expiresAt)).id).toBe('recap');
 });
 
-it('offers the energy-dip spark only between four and seven in the evening', () => {
-  expect(energyDipSpark(new Date('2027-07-02T17:30:00').getTime())).not.toBeNull();
-  expect(energyDipSpark(new Date('2027-07-02T09:30:00').getTime())).toBeNull();
-  expect(energyDipSpark(new Date('2027-07-02T21:30:00').getTime())).toBeNull();
+it('draws a Bureau Directive that turns over on the hour and on request', () => {
+  const hour = 3_600_000;
+  expect(DIRECTIVES).toContain(directive(NOW));
+  expect(directive(NOW, 1)).not.toBe(directive(NOW));
+  expect(directive(NOW + hour)).toBe(directive(NOW, 1));
+  expect(directive(NOW, DIRECTIVES.length)).toBe(directive(NOW));
 });
 
 import { closingLabel } from './time';

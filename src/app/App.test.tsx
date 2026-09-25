@@ -8,7 +8,11 @@ import { join } from '../core/actions';
 import { emptyState } from '../core/state';
 import { readBackup, writeBackup } from '../core/backup';
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  // The app keeps its place in the hash, and happy-dom keeps one window per file.
+  history.replaceState(null, '', '/');
+});
 
 async function joinAs(who: string, code = 'GUO27') {
   const user = userEvent.setup();

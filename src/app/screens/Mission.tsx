@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { privateMission } from '../../core/selectors';
+import { contraband, privateMission } from '../../core/selectors';
 import type { Action } from '../../core/actions';
 import type { State } from '../../core/state';
 import { Card, Screen } from '../../ui/primitives';
@@ -32,7 +32,7 @@ export function Mission({
   }
 
   return (
-    <Screen title="Private mission" lede="Only this phone, signed in as you, can read this.">
+    <Screen title="Private mission" lede="Only this phone, signed in as you, can read this. The Bureau will deny issuing it.">
       <Card band="Sealed" title="Yours alone" tone={mission.status === 'done' ? 'settled' : 'live'}>
         {revealed ? (
           <p className="mission-text" data-testid="mission-text">
@@ -74,9 +74,42 @@ export function Mission({
         <p className="hint">Status: {mission.status}</p>
       </Card>
 
+      <ClassifiedOrder phrase={contraband(state)} />
+
       <p className="fineprint">
-        The feed will say you took on a mission. It never says which one, and it never quotes a word of it.
+        The feed will say you took on a mission. It never says which one, and it never quotes a word of either.
       </p>
     </Screen>
+  );
+}
+
+/**
+ * A Contraband Phrase to smuggle into normal conversation. Sealed by default,
+ * and resealed whenever this screen is left, so a passed phone gives nothing away.
+ */
+function ClassifiedOrder({ phrase }: { phrase: string | null }) {
+  const [open, setOpen] = useState(false);
+  if (!phrase) return null;
+  return (
+    <Card band="Classified Order" title="Contraband Phrase">
+      {open ? (
+        <>
+          <p className="mission-text" data-testid="contraband-text">
+            “{phrase}”
+          </p>
+          <button type="button" className="quiet" onClick={() => setOpen(false)}>
+            Reseal
+          </button>
+        </>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)}>
+          Break the seal
+        </button>
+      )}
+      <p className="hint">
+        Smuggle it into conversation before the Tribunal. Naturally. Deniably. Anyone may call Contraband once. The
+        Contraband Run bounty needs one witness who heard it.
+      </p>
+    </Card>
   );
 }

@@ -12,6 +12,14 @@ import {
   PREDICTIONS,
 } from './content';
 import { mediaSchema } from './media';
+import {
+  ACT_NUMBERS,
+  DOCKET_KINDS,
+  MAX_DOCKET_CHARS,
+  MAX_SUBJECT_CHARS,
+  MAX_TESTIMONY_CHARS,
+  WITNESS_ROLES,
+} from './bureau';
 
 export const STATE_VERSION = 3;
 
@@ -64,6 +72,8 @@ export const settingsSchema = z.object({
     .string()
     .refine((value) => !Number.isNaN(Date.parse(value)))
     .default(DEFAULT_EXPIRES_AT),
+  /** Which act of the Bureau is running. Set by hand, because the schedule is not known. */
+  act: z.union(ACT_NUMBERS.map((act) => z.literal(act))).default(1),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -71,7 +81,41 @@ export const DEFAULT_SETTINGS: Settings = {
   hideRankings: true,
   awards: 'stories',
   expiresAt: DEFAULT_EXPIRES_AT,
+  act: 1,
 };
+
+/**
+ * One line in the Case File. Public on the phone it was filed on, and struck
+ * outright rather than hidden, so a struck line exists nowhere in the save.
+ */
+export const docketEntrySchema = z.object({
+  id: z.string(),
+  at: z.number(),
+  author: attendee,
+  seq: z.number().int().positive(),
+  kind: z.enum(DOCKET_KINDS),
+  text: z.string().min(1).max(MAX_DOCKET_CHARS),
+});
+export type DocketEntry = z.infer<typeof docketEntrySchema>;
+
+/**
+ * Seven Witnesses: sealed accounts of one small event, passed round the Bench
+ * phone. Authors are kept so nobody testifies twice, and never shown.
+ */
+export const testimonySchema = z.object({
+  subject: z.string().min(1).max(MAX_SUBJECT_CHARS),
+  revealed: z.boolean(),
+  entries: z.array(
+    z.object({
+      id: z.string(),
+      at: z.number(),
+      author: attendee,
+      role: z.enum(WITNESS_ROLES),
+      text: z.string().min(1).max(MAX_TESTIMONY_CHARS),
+    }),
+  ),
+});
+export type Testimony = z.infer<typeof testimonySchema>;
 
 export const stateSchema = z.object({
   version: z.literal(STATE_VERSION),
@@ -95,6 +139,12 @@ export const stateSchema = z.object({
   vault: z.array(memorySchema).default([]),
   future: z.partialRecord(attendee, z.string().max(MAX_FUTURE_CHARS)).default({}),
   feed: z.array(feedEventSchema).default([]),
+  // Added for the Bureau without a version bump: every field defaults, so an
+  // older save opens as-is and an older build simply strips these keys.
+  docket: z.array(docketEntrySchema).default([]),
+  /** Case numbers only go up, so a struck number is never handed out again. */
+  docketSeq: z.number().int().nonnegative().default(0),
+  testimony: testimonySchema.nullable().default(null),
 });
 
 export type State = z.infer<typeof stateSchema>;

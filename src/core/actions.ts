@@ -15,8 +15,19 @@ import {
 import type { Attendee, Color, Identity, Moment } from './content';
 import { MEDIA_BUDGET_CHARS, mediaWeight, validateMedia } from './media';
 import type { Media } from './media';
+import {
+  ACTS,
+  DOCKET,
+  FORECAST_WORDS,
+  MAX_DOCKET,
+  MAX_DOCKET_CHARS,
+  MAX_SUBJECT_CHARS,
+  MAX_TESTIMONY_CHARS,
+  WITNESS_ROLES,
+} from './bureau';
+import type { Act, DocketKind } from './bureau';
 import { sessionSchema } from './state';
-import type { FeedEvent, State } from './state';
+import type { FeedEvent, State, Testimony } from './state';
 import { isReadOnly } from './time';
 
 export type Action =
@@ -33,7 +44,14 @@ export type Action =
   | { type: 'removeMemory'; id: string }
   | { type: 'sealFuture'; text: string }
   | { type: 'dinner' }
-  | { type: 'settings'; hideRankings?: boolean; awards?: 'stories' | 'points'; expiresAt?: string };
+  | { type: 'settings'; hideRankings?: boolean; awards?: 'stories' | 'points'; expiresAt?: string }
+  | { type: 'setAct'; act: Act }
+  | { type: 'file'; kind: DocketKind; text: string }
+  | { type: 'strike'; id: string }
+  | { type: 'openTestimony'; subject: string }
+  | { type: 'testify'; author: Attendee; text: string }
+  | { type: 'revealTestimony' }
+  | { type: 'strikeTestimony'; id: string };
 
 const newId = () => globalThis.crypto.randomUUID();
 
@@ -273,10 +291,131 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       if (action.awards !== undefined) next.settings.awards = action.awards;
       break;
     }
+
+    case 'setAct': {
+      organizerOnly(state, 'change the act');
+      const info = ACTS[action.act];
+      if (!info) throw new Error('The Bureau runs in four acts, I to IV.');
+      next.settings.act = action.act;
+      log(`The Bureau has opened Act ${info.numeral}: ${info.title}.`);
+      break;
+    }
+
+    case 'file': {
+      const text = action.text.trim().replace(/\s+/g, ' ');
+      const kind = DOCKET[action.kind];
+      if (!kind) throw new Error('The Bureau does not recognise that form.');
+      if (action.kind === 'verdict') organizerOnly(state, 'enter a verdict');
+      if (!text || text.length > MAX_DOCKET_CHARS) {
+        throw new Error(`Filings are 1 to ${MAX_DOCKET_CHARS} characters.`);
+      }
+      const words = text.split(' ').length;
+      if (action.kind === 'forecast' && words !== FORECAST_WORDS) {
+        throw new Error(`Forecasts are exactly seven words. You have ${words}.`);
+      }
+      if (state.docket.length >= MAX_DOCKET) throw new Error('The record is full. Strike something first.');
+      next.docketSeq = state.docketSeq + 1;
+      next.docket.push({ id: newId(), at: now, author: me, seq: next.docketSeq, kind: action.kind, text });
+      // The number only. The filing itself stays in the Case File, where it can be struck.
+      log(`${me} filed ${caseNumber(action.kind, next.docketSeq)}.`);
+      break;
+    }
+
+    case 'strike': {
+      // The X-card: anyone playing can strike anything, and it is gone for good.
+      if (!state.docket.some((entry) => entry.id === action.id)) throw new Error('That entry is already gone.');
+      next.docket = next.docket.filter((entry) => entry.id !== action.id);
+      log('An entry was struck from the record.');
+      break;
+    }
+
+    case 'openTestimony': {
+      organizerOnly(state, 'open testimony');
+      const subject = action.subject.trim();
+      if (!subject || subject.length > MAX_SUBJECT_CHARS) {
+        throw new Error(`Name the event in 1 to ${MAX_SUBJECT_CHARS} characters.`);
+      }
+      // A round that never got going can be replaced, so a group that declines
+      // never leaves Seven Witnesses stuck. Two sworn accounts are protected.
+      if (state.testimony && !state.testimony.revealed && state.testimony.entries.length >= 2) {
+        throw new Error('Testimony is already open. Read it out before starting another.');
+      }
+      next.testimony = { subject, revealed: false, entries: [] };
+      log('Testimony is open. The phone goes round.');
+      break;
+    }
+
+    case 'testify': {
+      const round = next.testimony;
+      if (!round) throw new Error('No testimony is open.');
+      if (round.revealed) throw new Error('This testimony has been read out. It is closed.');
+      // The Bench phone is signed in as a Clerk and passed round, so a Clerk may
+      // take testimony for anyone. Anyone else only speaks for themselves.
+      if (action.author !== me && !isOrganizerIdentity(me)) {
+        throw new Error('You can only testify as yourself.');
+      }
+      if (round.entries.some((entry) => entry.author === action.author)) {
+        throw new Error(`${action.author} has already testified.`);
+      }
+      const text = action.text.trim();
+      if (!text || text.length > MAX_TESTIMONY_CHARS) {
+        throw new Error(`Testimony is 1 to ${MAX_TESTIMONY_CHARS} characters.`);
+      }
+      const role = witnessRole(round, action.author);
+      round.entries.push({ id: newId(), at: now, author: action.author, role, text });
+      // No author and no role in the feed: either would unseal the reveal.
+      log('A witness has sworn to it.');
+      break;
+    }
+
+    case 'revealTestimony': {
+      organizerOnly(state, 'read the testimony');
+      const round = next.testimony;
+      if (!round) throw new Error('No testimony is open.');
+      if (round.revealed) throw new Error('This testimony has already been read out.');
+      if (round.entries.length < 2) throw new Error('At least two witnesses have to testify first.');
+      round.revealed = true;
+      log('The testimony was read into the record.');
+      break;
+    }
+
+    case 'strikeTestimony': {
+      const round = next.testimony;
+      const entry = round?.entries.find((item) => item.id === action.id);
+      if (!round || !entry) throw new Error('That testimony is already gone.');
+      if (entry.author !== me && !isOrganizerIdentity(me)) {
+        throw new Error('Only the witness, or a Clerk, can strike testimony.');
+      }
+      round.entries = round.entries.filter((item) => item.id !== action.id);
+      log('A testimony was struck from the record.');
+      break;
+    }
   }
 
   return next;
 }
+
+/**
+ * The role a witness gets. It follows neither the order the phone went round
+ * nor the roster, so the table cannot work out whose words are whose: it starts
+ * from a hash of the witness and the event, then takes the next free role.
+ */
+export function witnessRole(round: Testimony, author: Attendee): (typeof WITNESS_ROLES)[number] {
+  const own = round.entries.find((entry) => entry.author === author);
+  if (own) return own.role;
+  let hash = 0;
+  for (const char of `${author}/${round.subject}`) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  const held = new Set(round.entries.map((entry) => entry.role));
+  for (let step = 0; step < WITNESS_ROLES.length; step += 1) {
+    const role = WITNESS_ROLES[(hash + step) % WITNESS_ROLES.length];
+    if (!held.has(role)) return role;
+  }
+  return WITNESS_ROLES[hash % WITNESS_ROLES.length];
+}
+
+/** INC-0004. Numbers are never reused, so a struck case leaves a gap. */
+export const caseNumber = (kind: DocketKind, seq: number): string =>
+  `${DOCKET[kind].prefix}-${String(seq).padStart(4, '0')}`;
 
 const MISSION_FEED: Record<'accepted' | 'done' | 'void', (who: Attendee) => string> = {
   accepted: (who) => `${who} took on a quiet mission.`,

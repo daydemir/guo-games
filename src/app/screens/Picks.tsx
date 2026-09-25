@@ -22,8 +22,8 @@ export function Picks({ state, locked, run }: { state: State; locked: boolean; r
       title="Picks"
       lede={
         playing
-          ? `Hold up to ${MAX_PICKS} open predictions at a time. ${left} slot${left === 1 ? '' : 's'} free. Then draft one fish. Points only, never money.`
-          : 'Everyone’s calls and the fish draft. Points only, never money.'
+          ? `Predictions, prophecies and the Dock Draft. Hold up to ${MAX_PICKS} open at a time, ${left} slot${left === 1 ? '' : 's'} free. Deliberately fulfilling a prophecy voids it. Points only, never money.`
+          : 'Everyone’s calls, the prophecies and the fish draft. Points only, never money.'
       }
     >
       <p className="jump">
@@ -125,8 +125,8 @@ function DockDraft({ state, locked, run }: { state: State; locked: boolean; run:
       </h3>
       <p className="hint group-lede">
         {mine
-          ? `You are on ${mine.name}. Change it any time before the boat leaves.`
-          : 'One species each. Nobody else can have yours.'}
+          ? `You are on ${mine.name}, and its note is your augury. You can still switch.`
+          : 'One species each. Nobody else can have yours. The note on your fish is your augury.'}
       </p>
       <ul className="board" aria-label="Dock draft board">
         {board.map(({ fish, drafter }) => {

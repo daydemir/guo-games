@@ -19,7 +19,8 @@ export const IDENTITIES: readonly Identity[] = [...ATTENDEES, 'Spectator'];
 export const COLORS = ['sea', 'coral', 'sand', 'lilac', 'palm', 'dusk', 'ember'] as const;
 export type Color = (typeof COLORS)[number];
 
-export const MOMENTS = ['Before Maui', 'Flights', 'Fishing', 'Downtime', 'Dinner'] as const;
+/** Append only: saved memories and predictions store these as enum values. */
+export const MOMENTS = ['Before Maui', 'Flights', 'Fishing', 'Downtime', 'Dinner', 'Tonight', 'Tomorrow'] as const;
 export type Moment = (typeof MOMENTS)[number];
 
 /** Limits that keep the game small and the browser storage healthy. */
@@ -39,19 +40,26 @@ export const POINTS = { prediction: 10, bounty: 5, mission: 5 } as const;
 
 export type Fish = { id: string; name: string; note: string };
 
+/**
+ * The Dock Draft doubles as the Fish Oracle: each note is an augury for
+ * whoever drafted that species. Ids are saved in every party, so they never
+ * change; the notes can.
+ */
 export const FISH: readonly Fish[] = [
-  { id: 'mahimahi', name: 'Mahi-mahi', note: 'Gold and green. The crowd pleaser.' },
-  { id: 'ono', name: 'Ono', note: 'Fast, and named after the word for delicious.' },
-  { id: 'ahi', name: 'Ahi', note: 'Deep water. Patience required.' },
-  { id: 'marlin', name: 'Marlin', note: 'The long shot on the board.' },
-  { id: 'uku', name: 'Uku', note: 'Grey snapper. Quietly reliable.' },
-  { id: 'opakapaka', name: 'Opakapaka', note: 'Pink snapper. The chef pick.' },
-  { id: 'ulua', name: 'Ulua', note: 'Trevally. Fights harder than it looks.' },
-  { id: 'kawakawa', name: 'Kawakawa', note: 'Little tuna, big energy.' },
-  { id: 'aku', name: 'Aku', note: 'Skipjack. Shows up in numbers.' },
+  { id: 'mahimahi', name: 'Mahi-mahi', note: 'The crowd pleaser. You will be asked to choose for the table.' },
+  { id: 'ono', name: 'Ono', note: 'Speed will betray you before midnight.' },
+  { id: 'ahi', name: 'Ahi', note: 'Say nothing for the first ten minutes of dinner. Power follows.' },
+  { id: 'marlin', name: 'Marlin', note: 'The long shot. A story you abandoned will be requested.' },
+  { id: 'uku', name: 'Uku', note: 'Quietly reliable. You will be handed the Gavel.' },
+  { id: 'opakapaka', name: 'Opakapaka', note: 'The chef pick. Your order will be copied.' },
+  { id: 'ulua', name: 'Ulua', note: 'Fights harder than it looks. Win one argument you do not care about.' },
+  { id: 'kawakawa', name: 'Kawakawa', note: 'Little tuna, big energy. You will start the second wind.' },
+  { id: 'aku', name: 'Aku', note: 'Shows up in numbers. Recruit two people to anything.' },
 ];
 
 export type Prediction = { id: string; moment: Moment; title: string; detail: string };
+
+const PROPHECY = 'Deliberately fulfilling a prophecy voids it. The Bureau is watching, loosely.';
 
 export const PREDICTIONS: readonly Prediction[] = [
   {
@@ -96,6 +104,13 @@ export const PREDICTIONS: readonly Prediction[] = [
     title: 'Does a story nobody has heard make it to the table?',
     detail: 'The vault settles this one.',
   },
+  // Prophecies, appended for the rest of the weekend. Ids are append only.
+  { id: 'spoon', moment: 'Tonight', title: 'Does a spoon acquire authority before dessert?', detail: PROPHECY },
+  { id: 'friday', moment: 'Tomorrow', title: 'Does anyone say Friday before the Tribunal adjourns?', detail: PROPHECY },
+  { id: 'smuggled', moment: 'Tonight', title: 'Is a Contraband Phrase called out correctly before midnight?', detail: PROPHECY },
+  { id: 'canon', moment: 'Tomorrow', title: 'Does the Naming Rights name survive until breakfast?', detail: PROPHECY },
+  { id: 'crime', moment: 'Tonight', title: 'Do two witnesses describe the same event as a crime?', detail: PROPHECY },
+  { id: 'forecast', moment: 'Tomorrow', title: 'Does a Fish Weather forecast come true by morning?', detail: PROPHECY },
 ];
 
 export type Bounty = { id: string; title: string; moment: string; detail: string };
@@ -138,6 +153,18 @@ export const BOUNTIES: readonly Bounty[] = [
     moment: 'Dinner',
     detail: 'Offer a thirty second toast built from one detail you learned today.',
   },
+  {
+    id: 'contraband',
+    title: 'Contraband Run',
+    moment: 'Before the Tribunal',
+    detail: 'Smuggle your Classified Order phrase into real conversation. Someone who heard it confirms.',
+  },
+  {
+    id: 'apology',
+    title: 'Object Apology',
+    moment: 'Anytime',
+    detail: 'Deliver a twenty second formal apology to an object you used today. Your witness voices its reply.',
+  },
 ];
 
 /** One private mission each. Kind, low risk, and never shown to anyone else. */
@@ -151,13 +178,18 @@ export const MISSIONS: Record<Attendee, string> = {
   Dmitriy: 'Save one kind observation about the crew and bring it to dinner.',
 };
 
-/** Shown once during the 4pm to 7pm regroup. Chosen by the day, not at random. */
-export const SPARKS: readonly string[] = [
-  'The day has gone quiet. Ask someone what surprised them so far.',
-  'Somebody is tired and not saying so. Offer water and twenty minutes.',
-  'Hand the speaker to whoever has not picked a song yet.',
-  'Ask Kevin about a plan he had at twenty-two that he is glad did not happen.',
-  'Name one thing you would not have done today on your own.',
+/**
+ * Bureau Directives: one gnomic ruling for a deadlocked group, drawn on the
+ * Today screen. Binding unless vetoed, and vetoes are free.
+ */
+export const DIRECTIVES: readonly string[] = [
+  'Honour the second option as a hidden intention.',
+  'The person who spoke least in the last hour chooses.',
+  'Do the plan you would have done in 2014.',
+  'Whoever holds the Gavel decides. If there is no Gavel, appoint one.',
+  'Move the whole group to the room with the best lamp.',
+  'Ask Kevin what he would have picked at twenty-two, then do the opposite.',
+  'Somebody is tired and not saying so. The Bureau orders water and twenty minutes.',
 ];
 
 export const GUARDRAILS: readonly string[] = [
@@ -166,6 +198,9 @@ export const GUARDRAILS: readonly string[] = [
   'Teasing comes from shared history, never from private exposure.',
   'Anyone playing can void anything still open, with no points lost and no explanation owed.',
   'Spectator is a real role. You can watch the whole day and never pick a thing.',
+  'The Bureau tries objects, stories and decisions. Never people.',
+  'Anyone may strike anything from the record, or call a recess for themselves, no reason owed.',
+  'Nothing about partners, exes, bodies, money, jobs or drinking. Nothing involving strangers, water or staff.',
 ];
 
 export const isAttendee = (identity: Identity | null | undefined): identity is Attendee =>

@@ -8,12 +8,14 @@ import {
   ORGANIZERS,
   POINTS,
   PREDICTIONS,
-  SPARKS,
+  DIRECTIVES,
   isAttendee,
 } from './content';
 import type { Attendee, Bounty, Fish, Identity, Prediction } from './content';
-import { heldBounties, openPicks } from './actions';
-import type { Memory, State } from './state';
+import { caseNumber, heldBounties, openPicks, witnessRole } from './actions';
+import { CONTRABAND, WITNESS_ROLES } from './bureau';
+import type { DocketKind } from './bureau';
+import type { DocketEntry, Memory, State } from './state';
 import { isReadOnly } from './time';
 
 export const me = (state: State): Identity | null => state.session?.attendee ?? null;
@@ -289,12 +291,13 @@ export function nextAction(state: State, now: number = Date.now()): NextAction {
   };
 }
 
-/** The Energy-Dip Spark: one prompt during the 4pm to 7pm regroup, and only then. */
-export function energyDipSpark(now: number = Date.now()): string | null {
-  const when = new Date(now);
-  if (when.getHours() < 16 || when.getHours() >= 19) return null;
-  const dayOfYear = Math.floor((now - new Date(when.getFullYear(), 0, 0).getTime()) / 86_400_000);
-  return SPARKS[dayOfYear % SPARKS.length];
+/**
+ * A Bureau Directive for a deadlocked group. It turns over on the hour, and
+ * `offset` is how many times someone has asked to draw another.
+ */
+export function directive(now: number = Date.now(), offset = 0): string {
+  const hour = Math.floor(now / 3_600_000);
+  return DIRECTIVES[(hour + offset) % DIRECTIVES.length];
 }
 
 /* -------------------------------------------------------------- predictions */
@@ -328,3 +331,58 @@ export const picksLeft = (state: State): number => {
   if (!isAttendee(who)) return 0;
   return Math.max(0, MAX_PICKS - openPicks(state, who));
 };
+
+/* ---------------------------------------------------------------- bureau */
+
+export type CaseFileRow = DocketEntry & { label: string };
+
+/** The Case File, newest first, or oldest first for reading aloud. */
+export function caseFile(state: State, kinds?: readonly DocketKind[], order: 'newest' | 'oldest' = 'newest'): CaseFileRow[] {
+  const rows = state.docket
+    .filter((entry) => !kinds || kinds.includes(entry.kind))
+    .map((entry) => ({ ...entry, label: caseNumber(entry.kind, entry.seq) }));
+  return order === 'newest' ? rows.reverse() : rows;
+}
+
+/** Only ever answers for the identity this device is currently holding. */
+export function contraband(state: State): string | null {
+  const who = me(state);
+  return isAttendee(who) ? CONTRABAND[who] : null;
+}
+
+export type TestimonyView = {
+  subject: string;
+  revealed: boolean;
+  count: number;
+  /** Who has not testified yet, for the "who is holding the phone" picker. */
+  pending: Attendee[];
+  /** Empty until the reveal, in role order rather than the order sworn, and never with an author. */
+  entries: { id: string; role: string; text: string }[];
+};
+
+/**
+ * What the Bench may show about Seven Witnesses. Before the reveal nothing
+ * anyone wrote is visible; after it, only roles and words, never who.
+ */
+export function testimonyView(state: State): TestimonyView | null {
+  const round = state.testimony;
+  if (!round) return null;
+  const sworn = new Set(round.entries.map((entry) => entry.author));
+  const entries = round.revealed
+    ? round.entries
+        .map(({ id, role, text }) => ({ id, role, text }))
+        .sort((a, b) => WITNESS_ROLES.indexOf(a.role) - WITNESS_ROLES.indexOf(b.role))
+    : [];
+  return {
+    subject: round.subject,
+    revealed: round.revealed,
+    count: round.entries.length,
+    pending: ATTENDEES.filter((attendee) => !sworn.has(attendee)),
+    entries,
+  };
+}
+
+/** The role the witness holding the phone is about to testify as. */
+export function roleFor(state: State, holder: Attendee): string | null {
+  return state.testimony ? witnessRole(state.testimony, holder) : null;
+}

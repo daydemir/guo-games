@@ -10,8 +10,12 @@ import { fileURLToPath } from 'node:url';
 // fileURLToPath, not URL.pathname: pathname keeps percent-encoding, so a
 // checkout under a path with a space resolved to a directory that is not there.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const assets = readdirSync(join(dist, 'assets')).map((name) => `/assets/${name}`);
-const shell = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/fonts/fraunces.ttf', ...assets];
+// The same base Vite built with, so a /guo-games/ build caches /guo-games/ URLs.
+const base = process.env.GUO_BASE ?? '/';
+const assets = readdirSync(join(dist, 'assets')).map((name) => `assets/${name}`);
+const shell = ['', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'fonts/fraunces.ttf', ...assets].map(
+  (path) => `${base}${path}`,
+);
 const version = `guo-games-${Date.now().toString(36)}`;
 
 writeFileSync(
@@ -66,7 +70,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // Only a page navigation can sensibly fall back to the app shell.
           // Handing index.html to an <img> or an <audio> just fails oddly.
-          if (event.request.mode === 'navigate') return lookup('/index.html');
+          if (event.request.mode === 'navigate') return lookup('${base}index.html');
           return Response.error();
         });
     }),
