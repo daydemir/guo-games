@@ -16,6 +16,12 @@ export const BUY_DOLLARS = [1, 5, 10, 25] as const;
 export type BuyDollars = (typeof BUY_DOLLARS)[number];
 export const MAX_QUESTION_CHARS = 120;
 export const MAX_CLOSES_CHARS = 60;
+/**
+ * What a voided market shows instead of its question. Anyone may void a market
+ * that has not been resolved, and the words go with it, from the save as well
+ * as the screen, so a question someone regrets does not linger.
+ */
+export const VOIDED_QUESTION = 'A voided market';
 /** Limits on what is still in play. Settled markets and their trades never count. */
 export const MAX_LIVE_MARKETS = 20;
 export const MAX_LIVE_TRADES = 400;

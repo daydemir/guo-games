@@ -77,9 +77,12 @@ it is a private party game.
 - There is no counterparty to find. An automatic market maker (a logarithmic
   market scoring rule, `src/core/market.ts`) always takes the other side, which
   matters because nothing syncs between phones.
-- A Clerk closes trading and resolves Yes, No or Void, each behind a second tap.
-  A winning share pays one pretend dollar; a void refunds every buy. The feed
-  records it all.
+- A Clerk closes trading and resolves Yes or No, behind a second tap. A winning
+  share pays one pretend dollar. The feed records each step.
+- Anyone playing may void a market that has not been resolved, no reason owed.
+  Every buy is refunded and the question is cleared from the save, so it leaves
+  the board and backups too. Feed lines never quote a question until it is
+  resolved.
 - Balances are never stored. They are worked out from the trades, which are
   never edited, so a resolution pays out exactly once and a second one is
   refused. A Clerk's phone can act as the trading desk and buy for whoever holds it.
@@ -138,7 +141,10 @@ keeps an unreadable save from being overwritten on mount.
   what in the app. Before the reveal, though, someone with direct access to the
   device storage or to backups could compare two copies taken either side of one
   account and match that name to it. At the reveal the roll is dropped, and every
-  later save and backup holds no link between a name and an account. A struck Case File
+  later save and backup holds no link between a name and an account. A round
+  saved by the branch's first build, whose roles were derived from names, is
+  dropped if it was never read out, and has its roles dealt again by the words
+  alone if it was. A struck Case File
   entry is deleted, not hidden. There are tests that assert exactly this.
 - **Tabs share one save.** A memo link often opens a second tab. Every command
   re-reads the save before it runs, and other open tabs follow along through

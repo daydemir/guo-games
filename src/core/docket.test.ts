@@ -14,6 +14,8 @@ it('lets an organizer, and only an organizer, move the Bureau to another act', (
   expect(state.feed[0].text).toBe('The Bureau has opened Act II: The Investigation.');
 
   expect(() => act(as('Jack'), { type: 'setAct', act: 3 }, NOW)).toThrow(/organizer/i);
+  // Choosing the act already running changes nothing, feed included.
+  expect(act(state, { type: 'setAct', act: 2 }, NOW)).toBe(state);
   expect(() => act(as('Deniz'), { type: 'setAct', act: 5 as 1 }, NOW)).toThrow(/four acts/i);
 });
 

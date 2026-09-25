@@ -123,11 +123,34 @@ it('marks a voided position as refunded, and never carries a desk choice to anot
 
   await user.click(within(macarena()).getByRole('button', { name: 'Void' }));
   await user.click(within(macarena()).getByRole('button', { name: 'Yes, void it' }));
-  expect(within(macarena()).getByText(/Dmitriy: [\d.]+ Yes, \$5\.00 refunded/)).toBeTruthy();
+  const voided = within(screen.getByRole('heading', { name: 'A voided market' }).closest('article')!);
+  expect(voided.getByText(/Dmitriy: [\d.]+ Yes, \$5\.00 refunded/)).toBeTruthy();
   expect(screen.getByRole('heading', { name: 'Dmitriy has $100.00' })).toBeTruthy();
 
   await switchTo(user, 'Deniz');
   await switchTo(user, 'Nick');
   expect((screen.getByLabelText(/buying for/i) as HTMLSelectElement).value).toBe('Nick');
   expect(screen.getByRole('heading', { name: 'You have $100.00' })).toBeTruthy();
+});
+
+it('lets any player void a live market, which refunds them and takes the question off the board and the feed', async () => {
+  render(<App />);
+  const user = await joinAs('Jack');
+  await user.click(screen.getByRole('link', { name: /^picks$/i }));
+  // Jack already holds a $5 No in the demo market.
+  expect(screen.getByRole('heading', { name: 'You have $95.00' })).toBeTruthy();
+  expect(within(macarena()).queryByRole('button', { name: /resolve/i })).toBeNull();
+
+  await user.click(within(macarena()).getByRole('button', { name: 'Void' }));
+  await user.click(screen.getByRole('button', { name: 'Yes, void it' }));
+
+  expect(screen.getByRole('status').textContent).toBe('Voided. Every buy was refunded.');
+  expect(screen.queryByText('Does the DJ play the Macarena?')).toBeNull();
+  expect(screen.getByRole('heading', { name: 'A voided market' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'You have $100.00' })).toBeTruthy();
+  expect(localStorage.getItem(STORAGE_KEY)).not.toContain('Macarena');
+
+  await user.click(screen.getByRole('link', { name: /^today$/i }));
+  expect(screen.queryByRole('heading', { name: /open market/ })).toBeNull();
+  expect(screen.getByText('Jack voided a market. Every buy was refunded.')).toBeTruthy();
 });

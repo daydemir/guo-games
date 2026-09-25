@@ -191,19 +191,24 @@ function MarketCard({
         </form>
       ) : null}
 
-      {organizer && (market.status === 'open' || market.status === 'closed') ? (
+      {/* A Clerk closes and resolves; anyone playing may void a market that is still live. */}
+      {playing && (market.status === 'open' || market.status === 'closed') ? (
         ruling ? (
           <div className="admin">
             <p className="hint">
-              {ruling === 'void' ? 'Void it and refund every buy?' : `Resolve ${SIDE[ruling]}? Winning shares pay $1.`}
+              {ruling === 'void'
+                ? 'Void it, refund every buy, and clear the question? No reason owed.'
+                : `Resolve ${SIDE[ruling]}? Winning shares pay $1.`}
             </p>
             <button
               type="button"
               className="primary"
               onClick={() => {
-                if (run({ type: 'resolveMarket', id: market.id, outcome: ruling }, ruling === 'void' ? 'Voided and refunded.' : `Resolved ${SIDE[ruling]}.`)) {
-                  setRuling(null);
-                }
+                const done =
+                  ruling === 'void'
+                    ? run({ type: 'voidMarket', id: market.id }, 'Voided. Every buy was refunded.')
+                    : run({ type: 'resolveMarket', id: market.id, outcome: ruling }, `Resolved ${SIDE[ruling]}.`);
+                if (done) setRuling(null);
               }}
             >
               {ruling === 'void' ? 'Yes, void it' : `Yes, resolve ${SIDE[ruling]}`}
@@ -214,17 +219,21 @@ function MarketCard({
           </div>
         ) : (
           <div className="admin">
-            {market.status === 'open' ? (
+            {organizer && market.status === 'open' ? (
               <button type="button" onClick={() => run({ type: 'closeMarket', id: market.id }, 'Trading closed.')}>
                 Close trading
               </button>
             ) : null}
-            <button type="button" onClick={() => setRuling('yes')}>
-              Resolve Yes
-            </button>
-            <button type="button" onClick={() => setRuling('no')}>
-              Resolve No
-            </button>
+            {organizer ? (
+              <>
+                <button type="button" onClick={() => setRuling('yes')}>
+                  Resolve Yes
+                </button>
+                <button type="button" onClick={() => setRuling('no')}>
+                  Resolve No
+                </button>
+              </>
+            ) : null}
             <button type="button" className="quiet" onClick={() => setRuling('void')}>
               Void
             </button>

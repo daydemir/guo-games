@@ -121,20 +121,28 @@ const testimonyShape = z.object({
   ),
 });
 
+export const testimonySchema = testimonyShape;
+
 /**
- * An earlier build of this branch kept `author` and `at` on each entry. Those
- * keys are stripped on read; an open round keeps who has sworn, and a revealed
- * one keeps nothing.
+ * The branch's first build kept each account's author, under a role picked from
+ * a hash of that author's name and the event, so the role alone could name its
+ * writer. Such a round, recognised by having no `sworn` roll, is made safe:
+ * - not yet read out: dropped. Its roles cannot be fixed without changing what
+ *   the witnesses were told, and they can simply testify again.
+ * - already read out: kept, with authors and timestamps gone and roles dealt
+ *   again in the alphabetical order of the words, which says nothing about who
+ *   wrote them.
  */
-export const testimonySchema = z.preprocess((value) => {
+function migrateTestimony(value: unknown): unknown {
   if (typeof value !== 'object' || value === null || 'sworn' in value) return value;
   const round = value as { revealed?: unknown; entries?: unknown };
-  const authors = Array.isArray(round.entries)
-    ? round.entries.map((entry) => (entry as { author?: unknown })?.author).filter((author) => author !== undefined)
-    : [];
-  const sworn = round.revealed ? [] : ATTENDEES.filter((who) => authors.includes(who));
-  return { ...round, sworn };
-}, testimonyShape);
+  if (!round.revealed || !Array.isArray(round.entries)) return null;
+  const entries = (round.entries as { id?: unknown; text?: unknown }[])
+    .map(({ id, text }) => ({ id, text }))
+    .sort((a, b) => String(a.text).localeCompare(String(b.text)))
+    .map((entry, index) => ({ ...entry, role: WITNESS_ROLES[index] }));
+  return { ...round, sworn: [], entries };
+}
 export type Testimony = z.infer<typeof testimonySchema>;
 
 /** A Wedding Market: one yes or no question, resolved by a Clerk. */
@@ -194,7 +202,7 @@ export const stateSchema = z.object({
   docket: z.array(docketEntrySchema).default([]),
   /** Case numbers only go up, so a struck number is never handed out again. */
   docketSeq: z.number().int().nonnegative().default(0),
-  testimony: testimonySchema.nullable().default(null),
+  testimony: z.preprocess(migrateTestimony, testimonySchema.nullable()).default(null),
   markets: z.array(marketSchema).default([]),
   trades: z.array(tradeSchema).default([]),
 });

@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { act } from './actions';
 import { testimonyView } from './selectors';
 import { writeBackup, readBackup } from './backup';
+import { WITNESS_ROLES } from './bureau';
 import { stateSchema } from './state';
 import { NOW, as } from './fixtures';
 import type { WitnessRole } from './bureau';
@@ -105,23 +106,47 @@ it('lets a Clerk start over while fewer than two have sworn, and protects two sw
   expect(JSON.stringify(state.feed)).not.toMatch(/sandal|cooler/i);
 });
 
-it('strips authors from a round saved by an earlier build, keeping only who may not testify again', () => {
-  const entry = (author: string, role: string) => ({ id: role, at: NOW, author, role, text: `${role} saw it.` });
-  const older = (revealed: boolean) =>
-    stateSchema.parse({
-      version: 3,
-      testimony: {
-        subject: 'The cooler lid',
-        revealed,
-        entries: [entry('Nate', 'Harbor Poet'), entry('Kevin', 'Customs Officer')],
-      },
-    }).testimony!;
+/**
+ * A round as the branch's first build saved it: authors kept, and each role
+ * picked from a hash of the author's name and the event.
+ */
+function legacyRound(revealed: boolean) {
+  const subject = 'The cooler lid';
+  const held = new Set<string>();
+  const entries = (['Nate', 'Kevin', 'Jack'] as const).map((author, index) => {
+    let hash = 0;
+    for (const char of `${author}/${subject}`) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    let step = 0;
+    while (held.has(WITNESS_ROLES[(hash + step) % WITNESS_ROLES.length])) step += 1;
+    const role = WITNESS_ROLES[(hash + step) % WITNESS_ROLES.length];
+    held.add(role);
+    return { id: `e${index}`, at: NOW + index, author, role, text: ['Zzz. Blub.', 'A crime, frankly.', 'Lid acted alone.'][index] };
+  });
+  return { subject, revealed, entries };
+}
 
-  const open = older(false);
-  expect(open.sworn).toEqual(['Kevin', 'Nate']);
-  expect(JSON.stringify(open.entries)).not.toMatch(/Kevin|Nate|author|"at"/);
+const load = (testimony: unknown) => stateSchema.parse({ version: 3, testimony }).testimony;
 
-  const revealed = older(true);
-  expect(revealed.sworn).toEqual([]);
-  expect(JSON.stringify(revealed)).not.toMatch(/Kevin|Nate/);
+it('drops an unread round from the first build, whose roles could name their writers', () => {
+  expect(load(legacyRound(false))).toBeNull();
+});
+
+it('keeps a read-out round from the first build, with roles dealt again by the words alone', () => {
+  const round = load(legacyRound(true))!;
+  expect(round).toMatchObject({ revealed: true, sworn: [] });
+  // Alphabetical by the words, so the roles no longer follow the name hash or the order sworn.
+  expect(round.entries).toEqual([
+    { id: 'e1', role: WITNESS_ROLES[0], text: 'A crime, frankly.' },
+    { id: 'e2', role: WITNESS_ROLES[1], text: 'Lid acted alone.' },
+    { id: 'e0', role: WITNESS_ROLES[2], text: 'Zzz. Blub.' },
+  ]);
+  expect(JSON.stringify(round)).not.toMatch(/Nate|Kevin|Jack|author|"at"/);
+  // Once saved in the new shape, it reads back untouched.
+  expect(load(round)).toEqual(round);
+});
+
+it('leaves a current round, and an empty save, as they are', () => {
+  const current = threeSworn().testimony!;
+  expect(load(current)).toEqual(current);
+  expect(stateSchema.parse({ version: 3 }).testimony).toBeNull();
 });

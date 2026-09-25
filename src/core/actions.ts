@@ -34,6 +34,7 @@ import {
   MAX_QUESTION_CHARS,
   MAX_LIVE_TRADES,
   STARTING_CENTS,
+  VOIDED_QUESTION,
   dollars,
   sharesFor,
 } from './market';
@@ -67,7 +68,8 @@ export type Action =
   | { type: 'openMarket'; question: string; closes: string }
   | { type: 'buy'; market: string; buyer: Attendee; side: Side; dollars: number }
   | { type: 'closeMarket'; id: string }
-  | { type: 'resolveMarket'; id: string; outcome: Side | 'void' };
+  | { type: 'resolveMarket'; id: string; outcome: Side }
+  | { type: 'voidMarket'; id: string };
 
 const newId = () => globalThis.crypto.randomUUID();
 
@@ -312,6 +314,8 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       organizerOnly(state, 'change the act');
       const info = ACTS[action.act];
       if (!info) throw new Error('The Bureau runs in four acts, I to IV.');
+      // The act already running: nothing changes, so nothing goes in the feed.
+      if (state.settings.act === action.act) return state;
       next.settings.act = action.act;
       log(`The Bureau has opened Act ${info.numeral}: ${info.title}.`);
       break;
@@ -424,7 +428,9 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
         throw new Error(`Up to ${MAX_LIVE_MARKETS} markets can be live at once. Resolve one first.`);
       }
       next.markets.push({ id: newId(), at: now, creator: me, question, closes, status: 'open' });
-      log(`${me} opened a market: ${question}`);
+      // Feed lines never quote an unresolved question: anyone may void it, and
+      // its words should leave with it.
+      log(`${me} opened a market.`);
       break;
     }
 
@@ -454,7 +460,7 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
         cents: cents as 100,
         shares,
       });
-      log(`${action.buyer} bought ${SIDE[action.side]} for ${dollars(cents)}: ${market.question}`);
+      log(`${action.buyer} bought ${SIDE[action.side]} for ${dollars(cents)}.`);
       break;
     }
 
@@ -463,7 +469,7 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       const market = mustFindMarket(next, action.id);
       if (market.status !== 'open') throw new Error('This market is not open.');
       market.status = 'closed';
-      log(`Trading closed: ${market.question}`);
+      log('Trading closed on a market.');
       break;
     }
 
@@ -471,14 +477,23 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       organizerOnly(state, 'resolve a market');
       const market = mustFindMarket(next, action.id);
       if (market.status === 'resolved' || market.status === 'void') throw new Error('This market is already settled.');
-      if (action.outcome === 'void') {
-        market.status = 'void';
-        log(`Voided, every buy refunded: ${market.question}`);
-      } else {
-        market.status = 'resolved';
-        market.outcome = action.outcome;
-        log(`Resolved ${SIDE[action.outcome]}, winning shares pay $1: ${market.question}`);
-      }
+      if (action.outcome !== 'yes' && action.outcome !== 'no') throw new Error('Resolve Yes or No.');
+      market.status = 'resolved';
+      market.outcome = action.outcome;
+      log(`Resolved ${SIDE[action.outcome]}, winning shares pay $1: ${market.question}`);
+      break;
+    }
+
+    case 'voidMarket': {
+      // Like voiding anything else still open: anyone playing, no reason owed.
+      // Every buy is refunded because balances come from the trades, which stay
+      // untouched; only the market's own words are cleared.
+      const market = mustFindMarket(next, action.id);
+      if (market.status === 'resolved' || market.status === 'void') throw new Error('This market is already settled.');
+      market.status = 'void';
+      market.question = VOIDED_QUESTION;
+      market.closes = '';
+      log(`${me} voided a market. Every buy was refunded.`);
       break;
     }
   }
