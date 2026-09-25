@@ -76,7 +76,9 @@ payment system of any kind.
   markets**, then **Share the link** and posts it in the group chat. Everyone
   else taps the link, picks their name, and lands on the markets. Nobody types
   a code. The link carries a random party key; without it nobody can read or
-  trade on the party. Share it in the group chat only.
+  trade on the party. Share it in the group chat only. On an iPhone, an app
+  added to the home screen keeps its own storage and a tapped link opens in
+  Safari, so the markets card also takes a pasted link.
 - **Trading.** Anyone playing opens a market with a question and, optionally,
   when it closes. It starts at 50 cents. Tap Yes or No, pick $1, $5, $10 or
   $25, read the quote (shares, average price, what it pays if right), and buy.
@@ -95,7 +97,8 @@ payment system of any kind.
 
 Markets live on Picks (`#picks/markets`), and Today shows the open ones.
 Identity is the same name-pick as the rest of the app: fine among friends, not
-authentication.
+authentication. "Only a Clerk" is an honour system: someone on the link who
+picks Deniz's name can resolve as Deniz.
 
 ### The market server
 
@@ -112,9 +115,12 @@ draw the board, straight from TypeScript (Node 22.18 or later).
 
 The key rides in an `x-party-key` header, never a URL. Phones poll every 2.5
 seconds while the app is on screen. Each party is one JSON file on a persistent
-disk, named by a hash of its key, written atomically on every change; an
-unreadable file is skipped and left alone. Commands that create something carry
-an id from the phone, so a retried request is applied once. Limits: 4 KB
+disk, named by a hash of its key, written atomically on every change. If any file cannot be read (say, after a
+roster change the server was not ready for), the server refuses to start and
+touches nothing, so a failed deploy leaves the previous one serving. A command
+that already happened (the same id from the same player, or a Clerk's ruling
+the market already carries) is a retry and changes nothing, so phones retry a
+dropped request safely. Change the roster in the app and the server together. Limits: 4 KB
 bodies, 600 requests a minute per address, 120 writes a minute per party, 5 new
 parties an hour per address and 30 in total, 500 parties, 20 live markets and
 5,000 trades a party. CORS allows only GitHub Pages and local dev and preview.

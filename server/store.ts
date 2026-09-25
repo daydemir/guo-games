@@ -40,9 +40,9 @@ export function openStore(dir: string): Store {
       const party = fileSchema.parse(JSON.parse(readFileSync(join(dir, name), 'utf8')));
       parties.set(party.id, party);
     } catch (error) {
-      // Left on disk, untouched, for a person to look at. No new party can be
-      // given its name, because names come from fresh random keys.
-      console.error(`Skipped unreadable party file ${name}:`, error);
+      // Refusing to start keeps the previous deploy serving, and never shows
+      // players an empty board that tempts a Clerk into starting over.
+      throw new Error(`Party file ${name} cannot be read by this version of the server. Nothing was changed.`, { cause: error });
     }
   }
 

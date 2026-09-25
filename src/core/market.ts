@@ -145,16 +145,18 @@ export const PARTY_KEY = /^[A-Za-z0-9_-]{22}$/;
 
 /**
  * The single way a party's markets change. Throws a sentence the phone shows
- * the player verbatim. A command whose id is already on the ledger was a
- * retry, so the ledger comes back untouched, the same object.
+ * the player verbatim. A command that has already happened (the same id, or a
+ * Clerk's ruling the market already carries) was a retry after a dropped
+ * answer, so the ledger comes back untouched, the same object.
  */
 export function apply(ledger: Ledger, who: Attendee, command: Command, now: number): Ledger {
+  if (alreadyDone(ledger, who, command)) return ledger;
   const next = structuredClone(ledger);
   next.version += 1;
 
   switch (command.type) {
     case 'open': {
-      if (ledger.markets.some((market) => market.id === command.id)) return ledger;
+      if (ledger.markets.some((market) => market.id === command.id)) throw new Error('That market id is taken.');
       const question = command.question.trim().replace(/\s+/g, ' ');
       const closes = command.closes.trim().replace(/\s+/g, ' ');
       if (!question || question.length > MAX_QUESTION_CHARS) {
@@ -170,7 +172,7 @@ export function apply(ledger: Ledger, who: Attendee, command: Command, now: numb
     }
 
     case 'buy': {
-      if (ledger.trades.some((trade) => trade.id === command.id)) return ledger;
+      if (ledger.trades.some((trade) => trade.id === command.id)) throw new Error('That trade id is taken.');
       const market = mustFind(ledger, command.market);
       if (market.status !== 'open') throw new Error('Trading on this market has closed.');
       if (!BUY_DOLLARS.includes(command.dollars as never)) throw new Error('Buys are $1, $5, $10 or $25.');
@@ -211,6 +213,30 @@ export function apply(ledger: Ledger, who: Attendee, command: Command, now: numb
       market.question = VOIDED_QUESTION;
       market.closes = '';
       return next;
+    }
+  }
+}
+
+/** True when this exact command has already been applied, by this player. */
+function alreadyDone(ledger: Ledger, who: Attendee, command: Command): boolean {
+  switch (command.type) {
+    case 'open': {
+      const market = ledger.markets.find((item) => item.id === command.id);
+      return market !== undefined && market.creator === who;
+    }
+    case 'buy': {
+      const trade = ledger.trades.find((item) => item.id === command.id);
+      return trade !== undefined && trade.buyer === who && trade.market === command.market && trade.side === command.side;
+    }
+    case 'close':
+    case 'resolve':
+    case 'void': {
+      if (!isClerk(who)) return false;
+      const market = ledger.markets.find((item) => item.id === command.market);
+      if (!market) return false;
+      if (command.type === 'close') return market.status === 'closed';
+      if (command.type === 'void') return market.status === 'void';
+      return market.status === 'resolved' && market.outcome === command.outcome;
     }
   }
 }

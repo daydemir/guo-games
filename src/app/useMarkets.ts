@@ -18,9 +18,10 @@ export type Live = {
   /**
    * off: no party link yet. connecting: waiting on the first answer. live:
    * the last answer came back. down: it did not. unknown: the server does not
-   * know this link.
+   * know this link. outdated: the server answered in a shape this build
+   * cannot read, so the app needs a reload.
    */
-  status: 'off' | 'connecting' | 'live' | 'down' | 'unknown';
+  status: 'off' | 'connecting' | 'live' | 'down' | 'unknown' | 'outdated';
   /** A command is on its way, so the buttons wait for it. */
   busy: boolean;
   /** The link that brings someone else onto this party. */
@@ -40,8 +41,8 @@ export const DEFAULT_MARKETS_URL = 'https://guo-games-markets.onrender.com';
 export const LIVE_KEY = 'guo-games/live';
 export const POLL_MS = 2_500;
 const TIMEOUT_MS = 8_000;
-/** Attempts at one command when the network drops it. Ids make a repeat harmless. */
-const ATTEMPTS = 3;
+/** Waits before each retry of a command the network dropped. A repeat is harmless: the server recognises it. */
+const BACKOFF_MS = [1_000, 2_000];
 
 const OFFLINE = 'Can’t reach the market, so that may not have gone through. It reconnects by itself; check the board then.';
 
@@ -148,7 +149,10 @@ export function useMarkets({
       if (response.status === 404) return setStatus('unknown');
       if (response.status === 204) return setStatus('live');
       if (!response.ok) return setStatus('down');
-      accept(ledgerSchema.parse(await response.json()));
+      const parsed = ledgerSchema.safeParse(await response.json());
+      if (keyRef.current !== asked) return;
+      if (!parsed.success) return setStatus('outdated');
+      accept(parsed.data);
       setStatus('live');
     } catch {
       if (keyRef.current === asked) setStatus('down');
@@ -184,17 +188,22 @@ export function useMarkets({
       if (!asked) return false;
       setBusy(true);
       try {
-        for (let attempt = 1; ; attempt += 1) {
+        for (let attempt = 0; ; attempt += 1) {
           let response: Response;
           try {
             response = await call('POST', '/party', asked, { who, command });
           } catch {
-            // Dropped on the way. The same command id is safe to send again.
-            if (attempt < ATTEMPTS) continue;
-            setStatus('down');
+            // Dropped on the way. The same command is safe to send again.
+            const wait = BACKOFF_MS[attempt];
+            if (wait !== undefined && keyRef.current === asked) {
+              await new Promise((resolve) => setTimeout(resolve, wait));
+              continue;
+            }
+            if (keyRef.current === asked) setStatus('down');
             onProblem(OFFLINE);
             return false;
           }
+          if (keyRef.current !== asked) return false;
           if (!response.ok) {
             if (response.status === 404) setStatus('unknown');
             onProblem(await reason(response));
@@ -207,7 +216,8 @@ export function useMarkets({
           return true;
         }
       } catch {
-        onProblem('The market sent back something this app cannot read. Reload and try again.');
+        setStatus('outdated');
+        onProblem('The market sent back something this app cannot read. Reload the app.');
         return false;
       } finally {
         setBusy(false);

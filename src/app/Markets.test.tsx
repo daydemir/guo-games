@@ -83,6 +83,22 @@ it('tells a player without the link where to find it, and offers them no start b
   expect(screen.queryByRole('button', { name: 'Start the markets' })).toBeNull();
 });
 
+it('takes a pasted party link, for an app opened from the home screen', async () => {
+  const key = await newParty();
+  render(<App />);
+  const user = await joinAs('Simon');
+  await user.click(screen.getByRole('link', { name: /^picks$/i }));
+  await user.type(screen.getByLabelText(/paste the party link/i), 'not a link');
+  await user.click(screen.getByRole('button', { name: 'Join the markets' }));
+  expect(screen.getByText(/That is not a party link/)).toBeTruthy();
+
+  await user.clear(screen.getByLabelText(/paste the party link/i));
+  await user.type(screen.getByLabelText(/paste the party link/i), `https://daydemir.github.io/guo-games/#live/${key}`);
+  await user.click(screen.getByRole('button', { name: 'Join the markets' }));
+  await screen.findByRole('heading', { name: 'You have $100.00' });
+  expect(localStorage.getItem(LIVE_KEY)).toBe(key);
+});
+
 it('joins from the party link, opens a market, buys, and sees another phone’s trade arrive', async () => {
   const key = await newParty();
   history.replaceState(null, '', `/#live/${key}`);

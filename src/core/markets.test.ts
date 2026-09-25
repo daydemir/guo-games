@@ -89,6 +89,19 @@ it('applies a repeated command once, so a retried request never buys twice', () 
   const opening = { type: 'open', id: 'open-me-1', question: 'Twice?', closes: '' } as const;
   const opened = apply(ledger, 'Jack', opening, NOW);
   expect(apply(opened, 'Jack', opening, NOW)).toBe(opened);
+
+  // Somebody else's id is not a retry.
+  expect(() => apply(once, 'Simon', command, NOW)).toThrow('That trade id is taken.');
+  expect(() => apply(opened, 'Nate', opening, NOW)).toThrow('That market id is taken.');
+
+  // A Clerk's ruling that already landed is a retry too; a different ruling is not.
+  const resolve = { type: 'resolve', market: idOf(ledger), outcome: 'yes' } as const;
+  const resolved = apply(once, 'Nick', resolve, NOW);
+  expect(apply(resolved, 'Deniz', resolve, NOW)).toBe(resolved);
+  expect(() => apply(resolved, 'Nick', { ...resolve, outcome: 'no' }, NOW)).toThrow(/already settled/);
+  expect(() => apply(resolved, 'Jack', resolve, NOW)).toThrow(/Only a Clerk/);
+  const closed = apply(once, 'Nick', { type: 'close', market: idOf(ledger) }, NOW);
+  expect(apply(closed, 'Nick', { type: 'close', market: idOf(ledger) }, NOW)).toBe(closed);
 });
 
 it('refuses buys it should: bad amounts, more than the balance, closed markets', () => {

@@ -156,13 +156,10 @@ it('survives a restart, writes whole files, and never names a file after its key
   expect(await ok(await read(key))).toEqual(before);
 });
 
-it('skips an unreadable party file without touching it', async () => {
+it('refuses to start over a party file it cannot read, and leaves the file alone', async () => {
   const broken = join(dir, `${'0'.repeat(32)}.json`);
   writeFileSync(broken, '{ half a party');
-  await stop();
-  await start();
-  const key = await party();
-  expect((await ok(await read(key))).version).toBe(0);
+  expect(() => openStore(dir)).toThrow(/cannot be read by this version of the server/);
   expect(readFileSync(broken, 'utf8')).toBe('{ half a party');
 });
 

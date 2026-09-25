@@ -66,6 +66,13 @@ function Connection({ live, clerk }: { live: Live; clerk: boolean }) {
   const { status } = live;
   if (status === 'live') return null;
   if (status === 'connecting') return <p className="hint">Connecting to the market…</p>;
+  if (status === 'outdated') {
+    return (
+      <p className="market-offline" role="status">
+        This copy of the app is out of date for the market. Close it and open it again.
+      </p>
+    );
+  }
   if (status === 'down') {
     return (
       <p className="market-offline" role="status">
@@ -82,6 +89,7 @@ function Connection({ live, clerk }: { live: Live; clerk: boolean }) {
   return status === 'unknown' ? (
     <Card band="Wedding Markets" title="This party link has expired">
       <p>The market does not know this link. Ask {CLERKS} for the link again.</p>
+      <PasteLink live={live} />
       {start}
     </Card>
   ) : (
@@ -91,8 +99,36 @@ function Connection({ live, clerk }: { live: Live; clerk: boolean }) {
       ) : (
         <p>The markets are shared on a party link. Tap the one {CLERKS} posted in the group chat.</p>
       )}
+      <PasteLink live={live} />
       {start}
     </Card>
+  );
+}
+
+const LINK = /#\/?live\/([A-Za-z0-9_-]{22})\b/;
+
+/**
+ * An app added to an iPhone home screen keeps its own storage, and a tapped
+ * link opens in Safari instead, so the installed app takes the link by paste.
+ */
+function PasteLink({ live }: { live: Live }) {
+  const [text, setText] = useState('');
+  const [wrong, setWrong] = useState(false);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const key = LINK.exec(text)?.[1];
+    setWrong(!key);
+    if (key) live.adopt(key);
+  }
+
+  return (
+    <form className="field" onSubmit={submit}>
+      <label htmlFor="paste-link">Opened the app from your home screen? Paste the party link</label>
+      <input id="paste-link" value={text} autoComplete="off" onChange={(event) => setText(event.target.value)} />
+      {wrong ? <p className="hint">That is not a party link. It ends in #live/ and a code.</p> : null}
+      <button type="submit">Join the markets</button>
+    </form>
   );
 }
 
