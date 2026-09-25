@@ -15,7 +15,7 @@ import { Vault } from './screens/Vault';
 import { Dinner } from './screens/Dinner';
 import { You } from './screens/You';
 import { Bench } from './Bench';
-import { HOME, parseHash } from './route';
+import { HOME, isBenchEcho, parseHash } from './route';
 
 /** In the order the day runs. You is reached from the masthead. */
 const TABS: Tab[] = [
@@ -39,6 +39,8 @@ export function App() {
   // survives it, so whoever taps it lands where the memo pointed.
   const [route, setRoute] = useState(() => parseHash(location.hash) ?? HOME);
   const { tab, anchor } = route;
+  /** Counts links followed, so each one gives the Bench a fresh start. */
+  const [visit, setVisit] = useState(0);
   const { state, problem, note, dismiss, run, signIn, reset, now, recovery, unsaved } = party;
   const locked = isReadOnly(state, now);
 
@@ -83,9 +85,12 @@ export function App() {
       return next;
     };
     const onHash = () => {
+      if (isBenchEcho(location.hash)) return;
       const next = consume();
-      // Once the Bench is up it owns its place in the deck, whatever the hash says.
-      if (next) setRoute((current) => (current.tab === 'bench' && next.tab === 'bench' ? current : next));
+      if (!next) return;
+      setRoute(next);
+      // A tapped link always lands on its card, even one the Bench opened on earlier.
+      setVisit((count) => count + 1);
     };
     consume();
     window.addEventListener('hashchange', onHash);
@@ -143,8 +148,8 @@ export function App() {
   );
 
   if (tab === 'bench') {
-    // Keyed so a new #card link, or convening again, starts the deck afresh.
-    return <Bench key={anchor ?? 'bench'} state={state} run={run} start={anchor} onGo={go} banner={banner} />;
+    // Keyed so every followed link, or convening again, starts the deck afresh.
+    return <Bench key={`${anchor ?? 'bench'}-${visit}`} state={state} run={run} start={anchor} onGo={go} banner={banner} />;
   }
 
   return (

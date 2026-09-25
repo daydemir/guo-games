@@ -222,3 +222,29 @@ it('lands a returning player on the section a memo linked to, then leaves the ad
   expect(document.activeElement?.id).toBe('sealed-future');
   expect(location.hash).toBe('');
 });
+
+it('follows a different card link tapped while the Bench is already open', async () => {
+  history.replaceState(null, '', '/#card/exhibit-a');
+  render(<App />);
+  const user = await joinAs('Deniz');
+  expect(cardTitle()).toBe('Exhibit A');
+
+  // Tapping a link sets the hash, which the browser announces once.
+  const tap = async (hash: string, title: string) => {
+    location.hash = hash;
+    await waitFor(() => expect(cardTitle()).toBe(title));
+    await waitFor(() => expect(location.hash).toBe(hash));
+  };
+
+  await tap('#card/object-trial', 'The Fish Court');
+
+  // A link to a card the Bench has already moved past still lands on it.
+  await user.keyboard('{ArrowRight}');
+  expect(cardTitle()).toBe('Naming Rights');
+  await tap('#card/object-trial', 'The Fish Court');
+
+  // And after leaving, a link to the last card shown opens the Bench again.
+  await user.click(screen.getByRole('button', { name: /leave the bench/i }));
+  expect(screen.getByRole('heading', { level: 2, name: 'Today' })).toBeTruthy();
+  await tap('#card/object-trial', 'The Fish Court');
+});

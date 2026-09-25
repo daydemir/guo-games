@@ -114,8 +114,13 @@ keeps an unreadable save from being overwritten on mount.
   the browser's storage event, so no tab writes an older copy over newer work.
 - **Old saves keep opening.** Fish, prediction and bounty ids are stored as
   enum keys, so they are append only: removing or renaming one would send every
-  live save to the recovery screen. New state fields default, and the save
-  version stays 3, so a save or backup opens in both older and newer builds.
+  live save to the recovery screen. New state fields default and the save
+  version stays 3, so a newer build opens every older save or backup. The
+  reverse only partly holds: an older build refuses a save that uses anything
+  it does not know, such as a pick on a new prophecy, a new bounty, or a memory
+  filed under Tonight or Tomorrow, and shows the recovery screen rather than
+  overwriting it. A save it can open loses its Case File, testimony and act on
+  that build's next write. Avoid rolling back mid-trip.
 - **The kill switch is real.** After `settings.expiresAt`, every mutation is
   refused and the app is a read-only recap. Organizers can move the date forward
   while the trip is live, and never into the past.

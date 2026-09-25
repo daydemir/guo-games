@@ -19,6 +19,7 @@ import type { Action } from '../core/actions';
 import { caseFile, draftBoard, isOrganizer, me, testimonyView } from '../core/selectors';
 import type { State } from '../core/state';
 import { Empty } from '../ui/primitives';
+import { forgetCard, showCard } from './route';
 import { useWakeLock } from './useWakeLock';
 import type { Note } from './useParty';
 
@@ -71,9 +72,11 @@ export function Bench({
       document.getElementById('main')?.focus();
       return;
     }
-    history.replaceState(null, '', `#card/${cardId}`);
+    showCard(cardId);
     heading.current?.focus();
   }, [cardId]);
+
+  useEffect(() => forgetCard, []);
 
   // Subscribed afresh each render, so the handler always sees the current deck.
   useEffect(() => {

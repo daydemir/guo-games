@@ -94,6 +94,10 @@ test('a Tribunal vote from a deep link lands in the Case File', async ({ page },
   await page.keyboard.press('ArrowLeft');
   await expect(page.getByRole('heading', { level: 2, name: 'Seven Witnesses' })).toBeFocused();
   await expect(page).toHaveURL(/#card\/witness$/);
+
+  // Another memo link tapped while the Bench is open moves it to that card.
+  await page.goto('/#card/object-trial');
+  await expect(page.getByRole('heading', { level: 2, name: 'The Fish Court' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.locator('.case-file')).toContainText('VER-0001');
   await expect(page.locator('.case-file')).toContainText('Exhibit A ruled Authentic, 4 to 2.');

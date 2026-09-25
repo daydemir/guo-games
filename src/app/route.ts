@@ -24,3 +24,24 @@ export function parseHash(hash: string): Route | null {
   if (!TABS.includes(head)) return null;
   return { tab: head, anchor: SECTION.test(section) ? section : null };
 }
+
+/** The hash the Bench last wrote for itself, so its own address updates are not mistaken for a tapped link. */
+let benchHash = '';
+
+/** Puts the current Bench card in the address, so a reload comes back to it. */
+export function showCard(id: string): void {
+  benchHash = `#card/${id}`;
+  history.replaceState(null, '', benchHash);
+}
+
+/** Called when the Bench closes, so a later link to its last card is followed. */
+export function forgetCard(): void {
+  benchHash = '';
+}
+
+/**
+ * True when a hash change is only the Bench's own write echoing back. Browsers
+ * do not announce replaceState, but some test environments do, and a link that
+ * points at the card already showing has nothing to do anyway.
+ */
+export const isBenchEcho = (hash: string): boolean => hash !== '' && hash === benchHash;
