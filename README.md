@@ -5,10 +5,10 @@ predictions, a fish draft, one quiet act confirmed by one witness, a vault of
 stories, a mock-official Bureau investigating a fish that got away, and a long
 dinner where it all gets settled.
 
-It is a shared attention engine, not a scoreboard with a party attached. There is
-no real money, no real-money mechanic, and no reason to hold the phone for more
-than a minute at a time. The Wedding Markets trade in pretend dollars that exist
-only inside the game.
+It is a shared attention engine, not a scoreboard with a party attached, and no
+reason to hold the phone for more than a minute at a time. The Wedding Markets
+keep score in dollars and are the one part shared live between phones; the app
+never moves real money.
 
 ## Commands
 
@@ -22,11 +22,13 @@ npm run build        # typecheck, Vite build, then generate dist/sw.js
 npm run build:pages  # the same, for GitHub Pages under /guo-games/
 npm run preview      # serve the production build on :4173
 npm run smoke        # build, then Playwright smoke tests against that build
+npm run server       # the Wedding Markets server on :8787 (Node >= 22.18)
+npm run smoke:live   # the two-phone market journey against the deployed server
 ```
 
 `npm run smoke` builds first, so a clean checkout or a stale `dist/` cannot
-give a misleading pass; the Playwright config then starts `vite preview` for
-you. Screenshots from a run land in `test-results/`, which is ignored; the
+give a misleading pass; the Playwright config then starts `vite preview` and a
+fresh market server for you, and the build points at that server. Screenshots from a run land in `test-results/`, which is ignored; the
 curated captures in `artifacts/` are committed and a run never rewrites them.
 
 ## How the app is laid out
@@ -47,7 +49,7 @@ and **IV Release** (the last morning). Kevin presides and is never on trial. The
 court only tries objects, stories and small decisions, and anyone may strike
 anything, no reason owed.
 
-Nothing syncs between phones, so the design leans on that:
+Nothing but the markets syncs between phones, so the design leans on that:
 
 - **The Bench** (`#bench`) is a full-screen card deck for one phone in the
   middle of the table. A Clerk reads each card aloud and can run a whole act
@@ -65,29 +67,63 @@ Nothing syncs between phones, so the design leans on that:
 
 ## Wedding Markets
 
-Yes or no questions that trade like Kalshi, in **pretend wedding dollars**.
-Everyone starts with $100. No real money is deposited, withdrawn, paid out or
-transferred, pretend dollars are never redeemable, and nothing leaves the phone:
-it is a private party game.
+Yes or no questions about the weekend that trade like Kalshi, in dollars, on
+one board every phone shares live. Everyone starts with $100. The app keeps
+score and never moves real money: no deposits, withdrawals, payouts or
+payment system of any kind.
 
-- Anyone playing opens a market with a question and, optionally, when it closes.
-  It starts at 50 cents.
-- Tap Yes or No, pick $1, $5, $10 or $25, read the quote (shares, average price,
-  what it pays if right), and buy. Every buy moves the price.
-- There is no counterparty to find. An automatic market maker (a logarithmic
-  market scoring rule, `src/core/market.ts`) always takes the other side, which
-  matters because nothing syncs between phones.
-- A Clerk closes trading and resolves Yes or No, behind a second tap. A winning
-  share pays one pretend dollar. The feed records each step.
-- Anyone playing may void a market that has not been resolved, no reason owed.
-  Every buy is refunded and the question is cleared from the save, so it leaves
-  the board and backups too. Feed lines never quote a question until it is
-  resolved.
-- Balances are never stored. They are worked out from the trades, which are
-  never edited, so a resolution pays out exactly once and a second one is
-  refused. A Clerk's phone can act as the trading desk and buy for whoever holds it.
+- **Starting.** A Clerk (Deniz or Nick) opens Picks and taps **Start the
+  markets**, then **Share the link** and posts it in the group chat. Everyone
+  else taps the link, picks their name, and lands on the markets. Nobody types
+  a code. The link carries a random party key; without it nobody can read or
+  trade on the party. Share it in the group chat only.
+- **Trading.** Anyone playing opens a market with a question and, optionally,
+  when it closes. It starts at 50 cents. Tap Yes or No, pick $1, $5, $10 or
+  $25, read the quote (shares, average price, what it pays if right), and buy.
+  Every buy moves the price for everyone within a few seconds.
+- **No waiting for a match.** An automatic market maker (a logarithmic market
+  scoring rule, `src/core/market.ts`) always takes the other side, so every
+  buy fills at once.
+- **Settling.** Only a Clerk closes trading, resolves Yes or No (behind a
+  second tap), or voids. A winning share pays $1, exactly once. A void refunds
+  every buy and clears the question from the server.
+- **Standings.** Everyone's gain or loss against their $100, best first. Open
+  bets count at what they cost, so once every market is resolved it is the
+  end-of-night tally. The market maker's line makes the column add up.
+- **Offline.** The server is the only place a trade happens. When it cannot be
+  reached the markets say so, buttons wait, and it reconnects by itself.
 
 Markets live on Picks (`#picks/markets`), and Today shows the open ones.
+Identity is the same name-pick as the rest of the app: fine among friends, not
+authentication.
+
+### The market server
+
+`server/` is a small Node service with no dependencies beyond `zod`. It runs
+`apply` from `src/core/market.ts`, the same file every phone uses to quote and
+draw the board, straight from TypeScript (Node 22.18 or later).
+
+| Route | What |
+| --- | --- |
+| `GET /health` | health check |
+| `POST /parties` | starts a party, answers `{ key, ledger }` |
+| `GET /party?since=N` | the ledger, or `204` when it is still version `N` |
+| `POST /party` | `{ who, command }`, answers the new ledger or `{ error }` |
+
+The key rides in an `x-party-key` header, never a URL. Phones poll every 2.5
+seconds while the app is on screen. Each party is one JSON file on a persistent
+disk, named by a hash of its key, written atomically on every change; an
+unreadable file is skipped and left alone. Commands that create something carry
+an id from the phone, so a retried request is applied once. Limits: 4 KB
+bodies, 600 requests a minute per address, 120 writes a minute per party, 5 new
+parties an hour per address and 30 in total, 500 parties, 20 live markets and
+5,000 trades a party. CORS allows only GitHub Pages and local dev and preview.
+
+It runs on Render as `guo-games-markets` (Starter, Oregon, 1 GB disk at
+`/var/data`), built with `npm ci --omit=dev` and started with
+`node server/main.ts`. Environment: `DATA_DIR=/var/data`, `NODE_VERSION=24`,
+and optionally `ALLOWED_ORIGINS`. A build points at a different server with
+`VITE_MARKETS_URL`.
 
 ## Architecture
 
@@ -99,7 +135,8 @@ render state and dispatch intent, and nothing else.
 src/core/       the game, with no React in it
   content.ts      the roster, fish, predictions, bounties, missions, all copy
   bureau.ts       the Bureau: acts, memos, Bench cards, orders, witness roles
-  market.ts       Wedding Markets pricing, in pretend dollars
+  market.ts       Wedding Markets: pricing, the ledger and its rules, shared
+                  by the phones and the server
   state.ts        the Zod schema, an empty party, and the seeded demo party
   actions.ts      join() and act(): the only ways a party can change
   selectors.ts    derived views: scores, boards, awards, the single next action
@@ -109,6 +146,7 @@ src/core/       the game, with no React in it
 src/app/        React: one hook for state, one screen per tab, plus You and
                 the Bench; route.ts reads and writes the hash links
 src/ui/         the five visual primitives every screen is built from
+server/         the Wedding Markets server: routes, file store, entry point
 e2e/            Playwright smoke tests against the real build
 ```
 
@@ -119,15 +157,16 @@ keeps an unreadable save from being overwritten on mount.
 
 ## Constraints this build holds to
 
-- **Local only.** No backend, no account, no network calls, no analytics, and no
-  MIX infrastructure of any kind. The whole party is one `localStorage` key.
+- **Local first.** No account, no analytics, and no MIX infrastructure of any
+  kind. The whole party is one `localStorage` key, except the Wedding Markets,
+  which live on this repo's own market server. The party key for them is a
+  separate `localStorage` key, so the save format did not change.
 - **Identity is a demonstration, not authentication.** Anyone holding the device
   can switch to anyone on the roster. That is deliberate for a phone that gets
   passed around a table, and it is stated in the interface.
-- **No real money.** Predictions, bounties and missions score points. Wedding
-  Markets use pretend dollars with no value: no real-money deposits,
-  withdrawals, payouts or transfers, no redemption, and no payment system of
-  any kind.
+- **No real money moves.** Predictions, bounties and missions score points.
+  Wedding Markets keep score in dollars; the app has no deposits, withdrawals,
+  payouts, transfers or payment system of any kind.
 - **Opt-in, always.** Nothing asks for a dangerous stunt, an ocean dare, a
   drinking challenge or pressure on a stranger. Anyone playing can void anything that is
   still open, with no points lost and no explanation owed. Once a prediction is
@@ -156,8 +195,10 @@ keeps an unreadable save from being overwritten on mount.
   reverse only partly holds: an older build refuses a save that uses anything
   it does not know, such as a pick on a new prophecy, a new bounty, or a memory
   filed under Tonight or Tomorrow, and shows the recovery screen rather than
-  overwriting it. A save it can open loses its Case File, testimony, act and
-  markets on that build's next write. Avoid rolling back mid-trip.
+  overwriting it. A save it can open loses its Case File, testimony and act on
+  that build's next write. Avoid rolling back mid-trip. Markets from the
+  earlier local-only build are dropped when a save opens; an old tab still open
+  may write them back, and the next open drops them again.
 - **The kill switch is real.** After `settings.expiresAt`, every mutation is
   refused and the app is a read-only recap. Organizers can move the date forward
   while the trip is live, and never into the past.
@@ -202,7 +243,8 @@ start. **Reset this device** on the You page puts the demo back.
 
 ## Deploying to Vercel
 
-The app is a static SPA with no environment variables and no secrets.
+The app is a static SPA with no secrets. The market server is deployed
+separately (see above), and its CORS list would need the Vercel origin added.
 
 ```bash
 npm i -g vercel
@@ -220,7 +262,7 @@ already sets:
   hashed assets
 - `nosniff`, `no-referrer` and `DENY` framing headers
 
-Nothing else is required. There is no server, no database and no API key.
+Nothing else is required for the app itself.
 
 ## PWA
 
@@ -230,7 +272,8 @@ Every URL is relative to the build's base (`GUO_BASE`, `/` by default,
 root and GitHub Pages under a sub-path without hand-patching the build.
 `scripts/build-sw.mjs` writes `dist/sw.js` after each build with the real hashed
 asset names baked in, so the offline shell can never drift from what Vite emitted.
-The shell is cache-first, which is always correct here because there is no API.
+The shell is cache-first; the market server is on another origin, so the
+service worker never touches its requests.
 Cache lookups ignore `Vary`, because a host that answers `Vary: Origin` would
 otherwise make the module script miss its cached copy and open offline as a
 blank page. A Playwright check loads the app, goes offline, reloads and joins.
