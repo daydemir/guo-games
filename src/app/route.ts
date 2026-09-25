@@ -24,4 +24,3 @@ export function parseHash(hash: string): Route | null {
   if (!TABS.includes(head)) return null;
   return { tab: head, anchor: SECTION.test(section) ? section : null };
 }
-
