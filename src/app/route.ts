@@ -8,8 +8,9 @@ import { benchCardById } from '../core/bureau';
  *   #picks/dock-draft   a section inside it
  *   #bench              the Bench, at the current act
  *   #card/exhibit-a     the Bench, at one card
+ *   #live/<key>         the party link: joins that party's Wedding Markets
  */
-export type Route = { tab: string; anchor: string | null };
+export type Route = { tab: string; anchor: string | null; key?: string };
 
 const TABS = ['today', 'picks', 'bounties', 'mission', 'vault', 'dinner', 'you'];
 const SECTION = /^[a-z0-9-]+$/;
@@ -18,6 +19,9 @@ export const HOME: Route = { tab: 'today', anchor: null };
 
 /** Null for anything that is not a route, such as an in-page `#dock-draft` jump. */
 export function parseHash(hash: string): Route | null {
+  // Before lowercasing: a party key is case-sensitive.
+  const live = /^#\/?live\/([A-Za-z0-9_-]+)$/.exec(hash);
+  if (live) return { tab: 'picks', anchor: 'markets', key: live[1] };
   const [head = '', section = ''] = hash.replace(/^#\/?/, '').toLowerCase().split('/');
   if (head === 'bench') return { tab: 'bench', anchor: null };
   if (head === 'card') return benchCardById(section) ? { tab: 'bench', anchor: section } : null;

@@ -36,7 +36,7 @@ export default ts.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs', 'public/**/*.js', 'e2e/**/*.ts'],
+    files: ['scripts/**/*.mjs', 'public/**/*.js', 'e2e/**/*.ts', 'server/**/*.ts', '*.config.ts'],
     languageOptions: {
       globals: { ...browser, process: 'readonly', self: 'readonly', caches: 'readonly', fetch: 'readonly', clients: 'readonly' },
     },

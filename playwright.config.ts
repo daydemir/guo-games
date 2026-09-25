@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Smoke tests run against the real production build, not the dev server, so
@@ -17,10 +19,21 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['iPhone 14'] } },
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
   ],
-  webServer: {
-    command: 'npx vite preview --host 127.0.0.1 --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: false,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: 'npx vite preview --host 127.0.0.1 --port 4173 --strictPort',
+      url: 'http://127.0.0.1:4173',
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      // The Wedding Markets server, fresh for every run. `npm run smoke` builds
+      // the app pointed at it.
+      command: 'node server/main.ts',
+      url: 'http://127.0.0.1:8788/health',
+      env: { PORT: '8788', DATA_DIR: join(tmpdir(), `guo-markets-smoke-${Date.now()}`) },
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+  ],
 });

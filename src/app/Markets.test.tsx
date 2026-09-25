@@ -1,14 +1,55 @@
 /** @vitest-environment happy-dom */
-import { beforeEach, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createServer } from 'node:http';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { App } from './App';
-import { STORAGE_KEY } from '../core/storage';
+import { LIVE_KEY } from './useMarkets';
+import { createApp } from '../../server/app.ts';
+import { openStore } from '../../server/store.ts';
+import type { Ledger } from '../core/market';
+
+/**
+ * These run the screens against the real market server, in-process, so what
+ * is tested is what a phone does: every price and balance comes back from it.
+ */
+let server: Server;
+let base: string;
+
+beforeAll(async () => {
+  server = createServer(createApp({ store: openStore(mkdtempSync(join(tmpdir(), 'guo-screen-'))), origins: [location.origin], limits: { createsPerAddress: 100 } }));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
 beforeEach(() => {
   localStorage.clear();
   history.replaceState(null, '', '/');
+  vi.stubEnv('VITE_MARKETS_URL', base);
 });
+afterEach(() => vi.unstubAllEnvs());
+
+async function newParty(): Promise<string> {
+  const response = await fetch(`${base}/parties`, { method: 'POST' });
+  return ((await response.json()) as { key: string }).key;
+}
+
+/** What another phone on the same party does, straight to the server. */
+async function elsewhere(key: string, who: string, command: Record<string, unknown>): Promise<Ledger> {
+  const response = await fetch(`${base}/party`, {
+    method: 'POST',
+    headers: { 'x-party-key': key, 'content-type': 'application/json' },
+    body: JSON.stringify({ who, command }),
+  });
+  expect(response.status).toBe(200);
+  return (await response.json()) as Ledger;
+}
 
 async function joinAs(who: string) {
   const user = userEvent.setup();
@@ -17,140 +58,144 @@ async function joinAs(who: string) {
   return user;
 }
 
-async function switchTo(user: ReturnType<typeof userEvent.setup>, who: string) {
-  await user.click(screen.getByRole('link', { name: /^you/i }));
-  await user.selectOptions(screen.getByLabelText(/switch identity/i), who);
-  await user.click(screen.getByRole('button', { name: /^apply$/i }));
-  await user.click(screen.getByRole('link', { name: /^picks$/i }));
-}
+const card = (question: string) => within(screen.getByRole('heading', { name: question }).closest('article')!);
 
-const macarena = () => screen.getByRole('heading', { name: 'Does the DJ play the Macarena?' }).closest('article')!;
-
-it('takes a player from Today to a market, quotes the buy, and spends pretend dollars', async () => {
+it('lets a Clerk start the markets and hands over a party link', async () => {
   render(<App />);
-  const user = await joinAs('Kevin');
-
-  expect(screen.getByRole('heading', { name: '1 open market' })).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: /^trade$/i }));
-  expect(document.activeElement?.id).toBe('markets');
-  expect(screen.getByRole('heading', { name: 'You have $100.00' })).toBeTruthy();
-
-  const card = within(macarena());
-  await user.click(card.getByRole('button', { name: /^Yes \d+¢/ }));
-  await user.click(card.getByRole('button', { name: '$10' }));
-  expect(card.getByText(/\$10 buys [\d.]+ Yes shares at \d+¢ each\. Pays \$[\d.]+ if Yes\./)).toBeTruthy();
-  await user.click(card.getByRole('button', { name: 'Buy Yes for $10' }));
-
-  expect(screen.getByRole('status').textContent).toMatch(/^Bought [\d.]+ Yes shares\.$/);
-  expect(screen.getByRole('heading', { name: 'You have $90.00' })).toBeTruthy();
-  expect(card.getByText(/You: [\d.]+ Yes, \$10\.00 in/)).toBeTruthy();
-  expect(localStorage.getItem(STORAGE_KEY)).toContain('"buyer":"Kevin"');
-});
-
-it('lets a Clerk resolve only after a second tap, and pays the winners', async () => {
-  render(<App />);
-  const user = await joinAs('Kevin');
-  await user.click(screen.getByRole('link', { name: /^picks$/i }));
-  await user.click(within(macarena()).getByRole('button', { name: /^Yes \d+¢/ }));
-  await user.click(within(macarena()).getByRole('button', { name: 'Buy Yes for $5' }));
-  expect(within(macarena()).queryByRole('button', { name: /resolve yes/i })).toBeNull();
-
-  await switchTo(user, 'Deniz');
-  await user.click(within(macarena()).getByRole('button', { name: 'Resolve Yes' }));
-  expect(screen.getByText('Resolve Yes? Winning shares pay $1.')).toBeTruthy();
-  await user.click(within(macarena()).getByRole('button', { name: 'Yes, resolve Yes' }));
-  expect(screen.getByRole('status').textContent).toBe('Resolved Yes.');
-  expect(within(macarena()).queryByRole('button', { name: /resolve/i })).toBeNull();
-  // Settled prices, as on Kalshi: a Yes share paid $1, a No share nothing.
-  expect(within(macarena()).getByText('$1')).toBeTruthy();
-  expect(within(macarena()).getByText('0¢')).toBeTruthy();
-
-  await switchTo(user, 'Kevin');
-  const title = screen.getByRole('heading', { name: /^You have \$/ }).textContent ?? '';
-  expect(Number(title.replace(/[^\d.]/g, ''))).toBeGreaterThan(100);
-  expect(within(macarena()).getByText(/Paid \$[\d.]+/)).toBeTruthy();
-});
-
-it('lets a Clerk at the desk buy for whoever is holding the phone', async () => {
-  render(<App />);
-  const user = await joinAs('Nick');
+  const user = await joinAs('Deniz');
   await user.click(screen.getByRole('link', { name: /^picks$/i }));
 
-  await user.selectOptions(screen.getByLabelText(/buying for/i), 'Dmitriy');
-  expect(screen.getByRole('heading', { name: 'Dmitriy has $100.00' })).toBeTruthy();
-  await user.click(within(macarena()).getByRole('button', { name: /^No \d+¢/ }));
-  await user.click(within(macarena()).getByRole('button', { name: 'Buy No for $5' }));
-  expect(screen.getByRole('status').textContent).toMatch(/^Dmitriy bought [\d.]+ No shares\.$/);
-  expect(screen.getByRole('heading', { name: 'Dmitriy has $95.00' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Not connected yet' })).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Start the markets' }));
+
+  await screen.findByRole('heading', { name: 'You have $100.00' });
+  expect(screen.getByRole('status').textContent).toBe('The markets are live. Share the party link in the group chat.');
+  const link = (screen.getByLabelText('Party link') as HTMLInputElement).value;
+  expect(link).toMatch(/#live\/[A-Za-z0-9_-]{22}$/);
+  expect(localStorage.getItem(LIVE_KEY)).toBe(link.split('#live/')[1]);
 });
 
-it('opens a new market at 50 cents', async () => {
+it('tells a player without the link where to find it, and offers them no start button', async () => {
   render(<App />);
   const user = await joinAs('Jack');
   await user.click(screen.getByRole('link', { name: /^picks$/i }));
+  expect(screen.getByText(/Tap the one Deniz or Nick posted in the group chat/)).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Start the markets' })).toBeNull();
+});
+
+it('joins from the party link, opens a market, buys, and sees another phone’s trade arrive', async () => {
+  const key = await newParty();
+  history.replaceState(null, '', `/#live/${key}`);
+  render(<App />);
+  const user = await joinAs('Jack');
+  // The link lands on the markets and leaves the address bar clean.
+  expect(location.hash).toBe('');
+  await screen.findByRole('heading', { name: 'You have $100.00' });
 
   await user.type(screen.getByLabelText(/a yes or no question/i), 'Does the cake survive the drive?');
   await user.type(screen.getByLabelText(/closes/i), 'Cake cutting');
   await user.click(screen.getByRole('button', { name: /open market/i }));
+  await screen.findByRole('heading', { name: 'Does the cake survive the drive?' });
+  const cake = () => card('Does the cake survive the drive?');
+  expect(cake().getByText('Open · closes Cake cutting')).toBeTruthy();
+  expect(cake().getByRole('button', { name: 'Yes 50¢' })).toBeTruthy();
 
-  const card = within(screen.getByRole('heading', { name: 'Does the cake survive the drive?' }).closest('article')!);
-  expect(card.getByText('Open · closes Cake cutting')).toBeTruthy();
-  expect(card.getByRole('button', { name: 'Yes 50¢' })).toBeTruthy();
-  expect(card.getByRole('button', { name: 'No 50¢' })).toBeTruthy();
+  await user.click(cake().getByRole('button', { name: 'Yes 50¢' }));
+  await user.click(cake().getByRole('button', { name: '$10' }));
+  expect(cake().getByText(/\$10 buys [\d.]+ Yes shares at \d+¢ each\. Pays \$[\d.]+ if Yes\./)).toBeTruthy();
+  await user.click(cake().getByRole('button', { name: 'Buy Yes for $10' }));
+
+  await screen.findByRole('heading', { name: 'You have $90.00' });
+  expect(screen.getByRole('status').textContent).toMatch(/^Bought [\d.]+ Yes shares for \$10\.00\.$/);
+  expect(cake().getByText(/You: [\d.]+ Yes, \$10\.00 in/)).toBeTruthy();
+
+  // Nate buys No on his own phone; this one catches up without a reload.
+  const ledger = (await (await fetch(`${base}/party`, { headers: { 'x-party-key': key } })).json()) as Ledger;
+  await elsewhere(key, 'Nate', { type: 'buy', id: 'nate-trade-1', market: ledger.markets[0].id, side: 'no', dollars: 25 });
+  await waitFor(() => expect(screen.getByText('Nate bought No: Does the cake survive the drive?')).toBeTruthy(), { timeout: 5_000 });
+  expect(screen.getByRole('list', { name: 'Standings' }).textContent).toContain('Jack (you)');
 });
 
-it('shows a spectator the prices with nothing to tap', async () => {
-  render(<App />);
-  const user = await joinAs('Spectator');
-  await user.click(screen.getByRole('link', { name: /^picks$/i }));
+it('lets only a Clerk resolve, after a second tap, and pays the winner', async () => {
+  const key = await newParty();
+  const opened = await elsewhere(key, 'Nick', { type: 'open', id: 'market-macarena', question: 'Does the DJ play the Macarena?', closes: '' });
+  await elsewhere(key, 'Kevin', { type: 'buy', id: 'kevin-trade-1', market: opened.markets[0].id, side: 'yes', dollars: 25 });
+  localStorage.setItem(LIVE_KEY, key);
 
-  const card = within(macarena());
-  expect(card.getByText(/^Yes$/)).toBeTruthy();
-  expect(card.queryAllByRole('button')).toEqual([]);
+  render(<App />);
+  const user = await joinAs('Nick');
+  await user.click(screen.getByRole('link', { name: /^picks$/i }));
+  await screen.findByRole('heading', { name: 'Does the DJ play the Macarena?' });
+  const macarena = () => card('Does the DJ play the Macarena?');
+
+  await user.click(macarena().getByRole('button', { name: 'Resolve Yes' }));
+  expect(screen.getByText('Resolve Yes? Winning shares pay $1. This cannot be undone.')).toBeTruthy();
+  await user.click(macarena().getByRole('button', { name: 'Yes, resolve Yes' }));
+  await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Resolved Yes.'));
+  expect(macarena().queryByRole('button', { name: /resolve/i })).toBeNull();
+  // Settled prices, as on Kalshi: a Yes share paid $1, a No share nothing.
+  expect(macarena().getByText('$1')).toBeTruthy();
+  expect(macarena().getByText('0¢')).toBeTruthy();
+  const standings = screen.getByRole('list', { name: 'Standings' });
+  expect(within(standings).getAllByRole('listitem')[0].textContent).toMatch(/^Kevin\+\$\d+\.\d\d$/);
+});
+
+it('gives a non-Clerk no way to close, resolve or void, and a spectator nothing to tap', async () => {
+  const key = await newParty();
+  await elsewhere(key, 'Nick', { type: 'open', id: 'market-macarena', question: 'Does the DJ play the Macarena?', closes: '' });
+  localStorage.setItem(LIVE_KEY, key);
+
+  render(<App />);
+  const user = await joinAs('Jack');
+  await user.click(screen.getByRole('link', { name: /^picks$/i }));
+  await screen.findByRole('heading', { name: 'Does the DJ play the Macarena?' });
+  expect(card('Does the DJ play the Macarena?').queryByRole('button', { name: /resolve|void|close/i })).toBeNull();
+
+  await user.click(screen.getByRole('link', { name: /^you/i }));
+  await user.selectOptions(screen.getByLabelText(/switch identity/i), 'Spectator');
+  await user.click(screen.getByRole('button', { name: /^apply$/i }));
+  await user.click(screen.getByRole('link', { name: /^picks$/i }));
+  expect(card('Does the DJ play the Macarena?').queryAllByRole('button')).toEqual([]);
   expect(screen.queryByLabelText(/a yes or no question/i)).toBeNull();
   expect(screen.queryByRole('heading', { name: /you have/i })).toBeNull();
 });
 
-it('marks a voided position as refunded, and never carries a desk choice to another identity', async () => {
+it('shows open markets on Today, with a way in', async () => {
+  const key = await newParty();
+  await elsewhere(key, 'Nick', { type: 'open', id: 'market-macarena', question: 'Does the DJ play the Macarena?', closes: '' });
+  localStorage.setItem(LIVE_KEY, key);
+
   render(<App />);
-  const user = await joinAs('Nick');
-  await user.click(screen.getByRole('link', { name: /^picks$/i }));
-
-  await user.selectOptions(screen.getByLabelText(/buying for/i), 'Dmitriy');
-  await user.click(within(macarena()).getByRole('button', { name: /^Yes \d+¢/ }));
-  await user.click(within(macarena()).getByRole('button', { name: 'Buy Yes for $5' }));
-  expect(screen.getByRole('status').textContent).toMatch(/^Dmitriy bought [\d.]+ Yes shares\.$/);
-
-  await user.click(within(macarena()).getByRole('button', { name: 'Void' }));
-  await user.click(within(macarena()).getByRole('button', { name: 'Yes, void it' }));
-  const voided = within(screen.getByRole('heading', { name: 'A voided market' }).closest('article')!);
-  expect(voided.getByText(/Dmitriy: [\d.]+ Yes, \$5\.00 refunded/)).toBeTruthy();
-  expect(screen.getByRole('heading', { name: 'Dmitriy has $100.00' })).toBeTruthy();
-
-  await switchTo(user, 'Deniz');
-  await switchTo(user, 'Nick');
-  expect((screen.getByLabelText(/buying for/i) as HTMLSelectElement).value).toBe('Nick');
-  expect(screen.getByRole('heading', { name: 'You have $100.00' })).toBeTruthy();
+  const user = await joinAs('Kevin');
+  await screen.findByRole('heading', { name: '1 open market' });
+  await user.click(screen.getByRole('button', { name: /^trade$/i }));
+  expect(document.activeElement?.id).toBe('markets');
 });
 
-it('lets any player void a live market, which refunds them and takes the question off the board and the feed', async () => {
-  render(<App />);
-  const user = await joinAs('Jack');
-  await user.click(screen.getByRole('link', { name: /^picks$/i }));
-  // Jack already holds a $5 No in the demo market.
-  expect(screen.getByRole('heading', { name: 'You have $95.00' })).toBeTruthy();
-  expect(within(macarena()).queryByRole('button', { name: /resolve/i })).toBeNull();
+it('says when the market cannot be reached, buys nothing, and recovers by itself', async () => {
+  const key = await newParty();
+  await elsewhere(key, 'Nick', { type: 'open', id: 'market-macarena', question: 'Does the DJ play the Macarena?', closes: '' });
+  localStorage.setItem(LIVE_KEY, key);
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    render(<App />);
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.selectOptions(screen.getByLabelText(/who are you/i), 'Jack');
+    await user.click(screen.getByRole('button', { name: /join the party/i }));
+    await user.click(screen.getByRole('link', { name: /^picks$/i }));
+    await screen.findByRole('heading', { name: 'Does the DJ play the Macarena?' });
 
-  await user.click(within(macarena()).getByRole('button', { name: 'Void' }));
-  await user.click(screen.getByRole('button', { name: 'Yes, void it' }));
+    vi.stubEnv('VITE_MARKETS_URL', 'http://127.0.0.1:9');
+    await act(() => vi.advanceTimersByTimeAsync(3_000));
+    await screen.findByText(/Can’t reach the market\. It reconnects by itself/);
+    await user.click(card('Does the DJ play the Macarena?').getByRole('button', { name: /^Yes/ }));
+    expect((card('Does the DJ play the Macarena?').getByRole('button', { name: /^Buy Yes/ }) as HTMLButtonElement).disabled).toBe(true);
 
-  expect(screen.getByRole('status').textContent).toBe('Voided. Every buy was refunded.');
-  expect(screen.queryByText('Does the DJ play the Macarena?')).toBeNull();
-  expect(screen.getByRole('heading', { name: 'A voided market' })).toBeTruthy();
-  expect(screen.getByRole('heading', { name: 'You have $100.00' })).toBeTruthy();
-  expect(localStorage.getItem(STORAGE_KEY)).not.toContain('Macarena');
-
-  await user.click(screen.getByRole('link', { name: /^today$/i }));
-  expect(screen.queryByRole('heading', { name: /open market/ })).toBeNull();
-  expect(screen.getByText('Jack voided a market. Every buy was refunded.')).toBeTruthy();
+    vi.stubEnv('VITE_MARKETS_URL', base);
+    await act(() => vi.advanceTimersByTimeAsync(3_000));
+    await waitFor(() => expect(screen.queryByText(/Can’t reach the market/)).toBeNull());
+    expect((card('Does the DJ play the Macarena?').getByRole('button', { name: /^Buy Yes/ }) as HTMLButtonElement).disabled).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
 });
