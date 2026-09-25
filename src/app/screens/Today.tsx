@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { isAttendee } from '../../core/content';
 import { ACTS, ACT_NUMBERS, CASE, PUBLIC_KINDS } from '../../core/bureau';
-import { priceLabel } from '../../core/market';
+import { board, priceLabel } from '../../core/market';
 import type { Act } from '../../core/bureau';
 import type { Action } from '../../core/actions';
 import {
   caseFile,
   directive,
-  marketBoard,
   isOrganizer,
   me,
   myBounty,
@@ -22,6 +21,7 @@ import type { State } from '../../core/state';
 import { Card, Empty, Screen, Stat } from '../../ui/primitives';
 import { FileLine } from '../Bench';
 import type { Note } from '../useParty';
+import type { Live } from '../useMarkets';
 
 type Run = (action: Action, note?: Note) => boolean;
 type Go = (tab: string, anchor?: string | null) => void;
@@ -42,12 +42,14 @@ export function Today({
   now,
   locked,
   run,
+  live,
   onGo,
 }: {
   state: State;
   now: number;
   locked: boolean;
   run: Run;
+  live: Live;
   onGo: Go;
 }) {
   const [wholeFeed, setWholeFeed] = useState(false);
@@ -74,7 +76,7 @@ export function Today({
 
       <CaseCard state={state} locked={locked} run={run} onGo={onGo} />
 
-      <MarketsCard state={state} onGo={onGo} />
+      <MarketsCard live={live} onGo={onGo} />
 
       {fish ? (
         <Card band="Your augury" title={fish.name}>
@@ -280,13 +282,13 @@ function CaseFile({ state, now, locked, run }: { state: State; now: number; lock
 }
 
 /** The live Wedding Markets at a glance, and the way in. Hidden until one opens. */
-function MarketsCard({ state, onGo }: { state: State; onGo: Go }) {
-  const live = marketBoard(state, null).filter((row) => row.market.status === 'open');
-  if (live.length === 0) return null;
+function MarketsCard({ live, onGo }: { live: Live; onGo: Go }) {
+  const open = live.ledger ? board(live.ledger, null).filter((row) => row.market.status === 'open') : [];
+  if (open.length === 0) return null;
   return (
-    <Card band="Wedding Markets" title={`${live.length} open market${live.length === 1 ? '' : 's'}`}>
+    <Card band="Wedding Markets" title={`${open.length} open market${open.length === 1 ? '' : 's'}`}>
       <ul className="market-glance">
-        {live.slice(0, 3).map(({ market, chance }) => (
+        {open.slice(0, 3).map(({ market, chance }) => (
           <li key={market.id}>
             <span>{market.question}</span>
             <span className="market-price">Yes {priceLabel(chance)}</span>
@@ -296,7 +298,6 @@ function MarketsCard({ state, onGo }: { state: State; onGo: Go }) {
       <button type="button" className="primary" onClick={() => onGo('picks', 'markets')}>
         Trade
       </button>
-      <p className="hint">Pretend dollars only. Nothing real changes hands.</p>
     </Card>
   );
 }

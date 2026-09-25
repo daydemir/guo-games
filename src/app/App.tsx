@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { isReadOnly } from '../core/time';
 import { useParty } from './useParty';
+import { useMarkets } from './useMarkets';
 import { Chrome } from './Chrome';
 import type { Tab } from './Chrome';
 import { JoinScreen } from './JoinScreen';
@@ -39,6 +40,9 @@ export function App() {
   // survives it, so whoever taps it lands where the memo pointed.
   const [route, setRoute] = useState(() => parseHash(location.hash) ?? HOME);
   const { tab, anchor } = route;
+  // The Wedding Markets live on a server, shared by everyone on the party link.
+  const live = useMarkets({ initialKey: route.key ?? null, onProblem: party.fail, onNote: party.tell });
+  const { adopt } = live;
   /** Counts links followed, so each one gives the Bench a fresh start. */
   const [visit, setVisit] = useState(0);
   const { state, problem, note, dismiss, run, signIn, reset, now, recovery, unsaved } = party;
@@ -88,6 +92,7 @@ export function App() {
       if (isBenchEcho(location.hash)) return;
       const next = consume();
       if (!next) return;
+      if (next.key) adopt(next.key);
       setRoute(next);
       // A tapped link always lands on its card, even one the Bench opened on earlier.
       setVisit((count) => count + 1);
@@ -95,7 +100,7 @@ export function App() {
     consume();
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  }, [adopt]);
 
   if (recovery) {
     return (
@@ -160,8 +165,8 @@ export function App() {
       holder={{ name: state.session.name, color: state.session.color }}
       banner={banner}
     >
-      {tab === 'today' ? <Today state={state} now={now} locked={locked} run={run} onGo={go} /> : null}
-      {tab === 'picks' ? <Picks state={state} locked={locked} run={run} /> : null}
+      {tab === 'today' ? <Today state={state} now={now} locked={locked} run={run} live={live} onGo={go} /> : null}
+      {tab === 'picks' ? <Picks state={state} locked={locked} run={run} live={live} /> : null}
       {tab === 'bounties' ? <Bounties state={state} locked={locked} run={run} /> : null}
       {tab === 'mission' ? <Mission state={state} locked={locked} run={run} /> : null}
       {tab === 'vault' ? (

@@ -27,20 +27,8 @@ import {
   WITNESS_ROLES,
 } from './bureau';
 import type { Act, DocketKind, WitnessRole } from './bureau';
-import {
-  BUY_DOLLARS,
-  MAX_CLOSES_CHARS,
-  MAX_LIVE_MARKETS,
-  MAX_QUESTION_CHARS,
-  MAX_LIVE_TRADES,
-  STARTING_CENTS,
-  VOIDED_QUESTION,
-  dollars,
-  sharesFor,
-} from './market';
-import type { Book, Side } from './market';
 import { sessionSchema } from './state';
-import type { FeedEvent, Market, State, Testimony } from './state';
+import type { FeedEvent, State, Testimony } from './state';
 import { isReadOnly } from './time';
 
 export type Action =
@@ -64,12 +52,7 @@ export type Action =
   | { type: 'openTestimony'; subject: string }
   | { type: 'testify'; author: Attendee; role: WitnessRole; text: string }
   | { type: 'revealTestimony' }
-  | { type: 'strikeTestimony'; id: string }
-  | { type: 'openMarket'; question: string; closes: string }
-  | { type: 'buy'; market: string; buyer: Attendee; side: Side; dollars: number }
-  | { type: 'closeMarket'; id: string }
-  | { type: 'resolveMarket'; id: string; outcome: Side }
-  | { type: 'voidMarket'; id: string };
+  | { type: 'strikeTestimony'; id: string };
 
 const newId = () => globalThis.crypto.randomUUID();
 
@@ -414,135 +397,9 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       log('A testimony was struck from the record.');
       break;
     }
-
-    // Wedding Markets, in pretend dollars. A Clerk's phone is the trading desk,
-    // so, as with testimony, a Clerk may buy for whoever is holding it.
-    case 'openMarket': {
-      const question = action.question.trim().replace(/\s+/g, ' ');
-      const closes = action.closes.trim();
-      if (!question || question.length > MAX_QUESTION_CHARS) {
-        throw new Error(`Ask a question of 1 to ${MAX_QUESTION_CHARS} characters.`);
-      }
-      if (closes.length > MAX_CLOSES_CHARS) throw new Error(`Say when it closes in ${MAX_CLOSES_CHARS} characters or fewer.`);
-      if (state.markets.filter(isLive).length >= MAX_LIVE_MARKETS) {
-        throw new Error(`Up to ${MAX_LIVE_MARKETS} markets can be live at once. Resolve one first.`);
-      }
-      next.markets.push({ id: newId(), at: now, creator: me, question, closes, status: 'open' });
-      // Feed lines never quote an unresolved question: anyone may void it, and
-      // its words should leave with it.
-      log(`${me} opened a market.`);
-      break;
-    }
-
-    case 'buy': {
-      const market = mustFindMarket(state, action.market);
-      if (!ATTENDEES.includes(action.buyer)) throw new Error('Pick who is buying.');
-      if (action.buyer !== me && !isOrganizerIdentity(me)) throw new Error('You can only buy for yourself.');
-      if (market.status !== 'open') throw new Error('Trading on this market has closed.');
-      if (action.side !== 'yes' && action.side !== 'no') throw new Error('Pick Yes or No.');
-      if (!BUY_DOLLARS.includes(action.dollars as never)) throw new Error('Buys are $1, $5, $10 or $25.');
-      const cents = action.dollars * 100;
-      const cash = wallet(state, action.buyer).cash;
-      if (cents > cash) {
-        throw new Error(`${action.buyer === me ? 'You have' : `${action.buyer} has`} ${dollars(cash)} to play with.`);
-      }
-      const live = new Set(state.markets.filter(isLive).map((item) => item.id));
-      if (state.trades.filter((trade) => live.has(trade.market)).length >= MAX_LIVE_TRADES) {
-        throw new Error('Live markets hold as many trades as this phone keeps. Resolve one first.');
-      }
-      const shares = sharesFor(book(state, market.id), action.side, action.dollars);
-      next.trades.push({
-        id: newId(),
-        at: now,
-        market: market.id,
-        buyer: action.buyer,
-        side: action.side,
-        cents: cents as 100,
-        shares,
-      });
-      log(`${action.buyer} bought ${SIDE[action.side]} for ${dollars(cents)}.`);
-      break;
-    }
-
-    case 'closeMarket': {
-      organizerOnly(state, 'close a market');
-      const market = mustFindMarket(next, action.id);
-      if (market.status !== 'open') throw new Error('This market is not open.');
-      market.status = 'closed';
-      log('Trading closed on a market.');
-      break;
-    }
-
-    case 'resolveMarket': {
-      organizerOnly(state, 'resolve a market');
-      const market = mustFindMarket(next, action.id);
-      if (market.status === 'resolved' || market.status === 'void') throw new Error('This market is already settled.');
-      if (action.outcome !== 'yes' && action.outcome !== 'no') throw new Error('Resolve Yes or No.');
-      market.status = 'resolved';
-      market.outcome = action.outcome;
-      log(`Resolved ${SIDE[action.outcome]}, winning shares pay $1: ${market.question}`);
-      break;
-    }
-
-    case 'voidMarket': {
-      // Like voiding anything else still open: anyone playing, no reason owed.
-      // Every buy is refunded because balances come from the trades, which stay
-      // untouched; only the market's own words are cleared.
-      const market = mustFindMarket(next, action.id);
-      if (market.status === 'resolved' || market.status === 'void') throw new Error('This market is already settled.');
-      market.status = 'void';
-      market.question = VOIDED_QUESTION;
-      market.closes = '';
-      log(`${me} voided a market. Every buy was refunded.`);
-      break;
-    }
   }
 
   return next;
-}
-
-const SIDE: Record<Side, string> = { yes: 'Yes', no: 'No' };
-
-/** Open or closed, not yet resolved or voided. */
-const isLive = (market: Market) => market.status === 'open' || market.status === 'closed';
-
-/** What one trade pays once its market settles: $1 a winning share, rounded per trade. */
-export const payout = (trade: { shares: number }) => Math.round(trade.shares * 100);
-
-function mustFindMarket(state: State, id: string): Market {
-  const market = state.markets.find((item) => item.id === id);
-  if (!market) throw new Error('That market is not here.');
-  return market;
-}
-
-/** Shares bought on each side of one market so far. */
-export function book(state: State, id: string): Book {
-  const shares: Book = { yes: 0, no: 0 };
-  for (const trade of state.trades) if (trade.market === id) shares[trade.side] += trade.shares;
-  return shares;
-}
-
-/**
- * A player's pretend dollars, in cents, worked out from their trades every
- * time. `cash` is what they can still spend; `inPlay` is spent on markets not
- * yet settled. A void, or a trade whose market is gone, is a refund; a
- * resolution pays $1 for each winning share.
- */
-export function wallet(state: State, who: Attendee): { cash: number; inPlay: number } {
-  let cash = STARTING_CENTS;
-  let inPlay = 0;
-  for (const trade of state.trades) {
-    if (trade.buyer !== who) continue;
-    const market = state.markets.find((item) => item.id === trade.market);
-    if (!market || market.status === 'void') continue;
-    cash -= trade.cents;
-    if (market.status === 'resolved') {
-      if (market.outcome === trade.side) cash += payout(trade);
-    } else {
-      inPlay += trade.cents;
-    }
-  }
-  return { cash, inPlay };
 }
 
 /** Roles nobody holds yet. The Bench deals one at random, so a role never points at a person. */
