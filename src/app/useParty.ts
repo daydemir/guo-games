@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { act, join } from '../core/actions';
 import type { Action } from '../core/actions';
-import { clear, load, save } from '../core/storage';
+import { STORAGE_KEY, clear, load, save } from '../core/storage';
 import type { Loaded, StorageLike } from '../core/storage';
 import { readBackup, writeBackup } from '../core/backup';
 import type { Color, Identity } from '../core/content';
@@ -30,8 +30,11 @@ export type Party = {
   /** The unreadable bytes, as a downloadable backup-shaped file. */
   exportBackup: () => string;
   importBackup: (text: string) => void;
-  /** True when the command was applied and saved, false when it was refused. */
-  run: (action: Action, note?: string) => boolean;
+  /**
+   * True when the command was applied and saved, false when it was refused.
+   * The note may be worked out from the saved party, such as a case number.
+   */
+  run: (action: Action, note?: Note) => boolean;
   signIn: (code: string, who: Identity, name: string, color: Color) => boolean;
   reset: () => void;
   /** Ticks about once a minute so relative times and the 4pm spark stay honest. */
@@ -39,6 +42,7 @@ export type Party = {
 };
 
 export type Recovery = { message: string; raw: string };
+export type Note = string | ((next: State) => string);
 
 /**
  * Even touching `localStorage` throws when a browser blocks site data, and at
@@ -85,6 +89,8 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
 
   /** Mirrors `state` so a command can read the latest without a stale closure. */
   const latest = useRef(state);
+  /** The bytes this tab last read or wrote. Anything else in storage came from another tab. */
+  const seen = useRef(initial.raw);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60_000);
@@ -104,23 +110,60 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
   }, [recovery]);
 
   /**
+   * Catches up with the device save. A memo link often opens a second tab, and
+   * both tabs share one save: without this, whichever wrote last would silently
+   * erase the other's work and hand out the same case number twice. False when
+   * the save has become unreadable, which puts this tab into recovery too.
+   */
+  const sync = useCallback((): boolean => {
+    if (!store || store.getItem(STORAGE_KEY) === seen.current) return true;
+    const loaded = load(store);
+    seen.current = loaded.raw;
+    if (loaded.unreadable && loaded.raw !== null) {
+      setRecovery({ message: loaded.problem ?? '', raw: loaded.raw });
+      setProblem(loaded.problem);
+      return false;
+    }
+    latest.current = loaded.state;
+    setState(loaded.state);
+    setRecovery(null);
+    return true;
+  }, [store]);
+
+  // Another tab's write, reset or restore shows up here without a reload.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== null && event.key !== STORAGE_KEY) return;
+      try {
+        sync();
+      } catch {
+        // A read that throws leaves this tab as it was; its next command reports it.
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [sync]);
+
+  /**
    * Runs a command and saves the result, or turns the rule it broke into a
    * message. The screen only moves on once the write has landed: showing a
    * memory that never reached storage would lose it on the next reload.
    */
   const attempt = useCallback(
-    (compute: (current: State) => State, confirmation?: string): boolean => {
+    (compute: (current: State) => State, confirmation?: Note): boolean => {
       // Checked before the reducer runs, not after. Otherwise a rescued empty
       // party throws its own "join first" complaint and the real reason the
       // app is refusing never reaches the player.
       if (blocked()) return false;
       try {
+        // Always on the save as it is now, never on this tab's older copy.
+        if (!sync()) return false;
         const next = compute(latest.current);
-        if (store) save(store, next);
+        if (store) seen.current = save(store, next);
         latest.current = next;
         setState(next);
         setProblem(null);
-        setNote(confirmation ?? null);
+        setNote(typeof confirmation === 'function' ? confirmation(next) : (confirmation ?? null));
         return true;
       } catch (error) {
         setProblem(messageFrom(error));
@@ -128,11 +171,11 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
         return false;
       }
     },
-    [store, blocked],
+    [store, blocked, sync],
   );
 
   const run = useCallback(
-    (action: Action, confirmation?: string) => attempt((current) => act(current, action), confirmation),
+    (action: Action, confirmation?: Note) => attempt((current) => act(current, action), confirmation),
     [attempt],
   );
 
@@ -147,6 +190,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
 
   const reset = useCallback(() => {
     if (store) clear(store);
+    seen.current = null;
     const fresh = store ? load(store).state : demoState();
     latest.current = fresh;
     setState(fresh);
@@ -169,7 +213,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
     (text: string) => {
       try {
         const restored = readBackup(text);
-        if (store) save(store, restored);
+        if (store) seen.current = save(store, restored);
         latest.current = restored;
         setState(restored);
         setRecovery(null);

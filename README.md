@@ -105,8 +105,13 @@ keeps an unreadable save from being overwritten on mount.
   Spectator is a real role.
 - **Private stays private.** Mission text, vault stories, sealed notes,
   Classified Orders, Case File text and sworn testimony never reach the shared
-  feed, and a revealed testimony never shows who wrote it. A struck Case File
+  feed. Testimony is stored under a random role with no author, the list of who
+  has sworn is kept only to stop a second account and is dropped at the reveal,
+  so neither the save nor a backup can say who wrote what. A struck Case File
   entry is deleted, not hidden. There are tests that assert exactly this.
+- **Tabs share one save.** A memo link often opens a second tab. Every command
+  re-reads the save before it runs, and other open tabs follow along through
+  the browser's storage event, so no tab writes an older copy over newer work.
 - **Old saves keep opening.** Fish, prediction and bounty ids are stored as
   enum keys, so they are append only: removing or renaming one would send every
   live save to the recovery screen. New state fields default, and the save

@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, render, renderHook, screen, within } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { useWakeLock } from './useWakeLock';
@@ -100,9 +100,14 @@ it('runs Seven Witnesses on one phone and reveals the words without a single nam
     expect(screen.getByText(/You are the /)).toBeTruthy();
     await user.type(screen.getByLabelText(/your testimony/i), words);
     await user.click(screen.getByRole('button', { name: /swear to it/i }));
+    // Focus lands on the picker for the next witness, not on the page, where Space would skip the card.
+    await waitFor(() => expect(document.activeElement?.id).toBe('witness-holder'));
   }
   expect(screen.getByText(/3 of 7 witnesses have testified/)).toBeTruthy();
   expect(screen.queryByText(/Blub/)).toBeNull();
+  const sealed = JSON.parse(saved()).testimony;
+  expect(sealed.sworn).toEqual(['Kevin', 'Jack', 'Nate']);
+  expect(JSON.stringify(sealed.entries)).not.toMatch(/Kevin|Jack|Nate|author/);
 
   // At the Tribunal, the Clerk opens the reveal card from a fresh link.
   cleanup();
@@ -114,6 +119,8 @@ it('runs Seven Witnesses on one phone and reveals the words without a single nam
   expect(within(stage).getAllByRole('heading', { name: /^Testimony of the / })).toHaveLength(3);
   expect(within(stage).getByText('Blub.')).toBeTruthy();
   expect(stage.textContent).not.toMatch(/Kevin|Jack|Nate|Deniz/);
+  // After the reveal the device save, and so any backup of it, holds no names at all.
+  expect(JSON.stringify(JSON.parse(saved()).testimony)).not.toMatch(/Kevin|Jack|Nate|Deniz/);
 });
 
 it('files and strikes an incident from Today, and the words leave the device save', async () => {

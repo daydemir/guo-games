@@ -13,15 +13,16 @@ import {
   benchCardById,
   benchDeck,
 } from '../core/bureau';
-import type { BenchCard, DocketKind } from '../core/bureau';
+import type { BenchCard, DocketKind, WitnessRole } from '../core/bureau';
 import { caseNumber } from '../core/actions';
 import type { Action } from '../core/actions';
-import { caseFile, draftBoard, isOrganizer, me, roleFor, testimonyView } from '../core/selectors';
+import { caseFile, draftBoard, isOrganizer, me, testimonyView } from '../core/selectors';
 import type { State } from '../core/state';
 import { Empty } from '../ui/primitives';
 import { useWakeLock } from './useWakeLock';
+import type { Note } from './useParty';
 
-type Run = (action: Action, note?: string) => boolean;
+type Run = (action: Action, note?: Note) => boolean;
 type Go = (tab: string, anchor?: string | null) => void;
 
 const TYPING = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
@@ -193,7 +194,7 @@ function CardExtras({
       {card.show === 'testimony' ? <WitnessIntake state={state} run={run} /> : null}
       {card.show === 'reveal' ? <WitnessReveal state={state} run={run} /> : null}
       {card.vote ? <Vote card={card} vote={card.vote} state={state} run={run} count={tally} setCount={onTally} /> : null}
-      {card.file ? <FileLine state={state} run={run} kinds={[card.file]} /> : null}
+      {card.file ? <FileLine run={run} kinds={[card.file]} /> : null}
       {card.link ? (
         <button type="button" className="primary" onClick={() => onGo(card.link!.tab, card.link!.anchor ?? null)}>
           {card.link.label}
@@ -288,7 +289,7 @@ function Vote({
             className="primary"
             disabled={count.a + count.b === 0}
             onClick={() => {
-              if (run({ type: 'file', kind: 'verdict', text: verdict }, `Entered as ${caseNumber('verdict', state.docketSeq + 1)}.`)) {
+              if (run({ type: 'file', kind: 'verdict', text: verdict }, (next) => `Entered as ${caseNumber('verdict', next.docketSeq)}.`)) {
                 setCount(NO_VOTES);
               }
             }}
@@ -310,14 +311,14 @@ function Vote({
  * One line into the Case File. The Bench presets the kind; Today offers the
  * public ones. A forecast shows its word count, because seven is the joke.
  */
-export function FileLine({ state, run, kinds }: { state: State; run: Run; kinds: readonly DocketKind[] }) {
+export function FileLine({ run, kinds }: { run: Run; kinds: readonly DocketKind[] }) {
   const [kind, setKind] = useState(kinds[0]);
   const [text, setText] = useState('');
   const id = `file-${kinds.join('-')}`;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (run({ type: 'file', kind, text }, `Filed as ${caseNumber(kind, state.docketSeq + 1)}.`)) setText('');
+    if (run({ type: 'file', kind, text }, (next) => `Filed as ${caseNumber(kind, next.docketSeq)}.`)) setText('');
   }
   return (
     <form className="bench-form" onSubmit={submit}>
@@ -365,6 +366,8 @@ function WitnessIntake({ state, run }: { state: State; run: Run }) {
   const organizer = isOrganizer(state);
   const [subject, setSubject] = useState('');
   const [holder, setHolder] = useState<Attendee | ''>('');
+  /** Dealt at random from the free roles when a holder is chosen, so a role never points at a person. */
+  const [role, setRole] = useState<WitnessRole | null>(null);
   const [text, setText] = useState('');
 
   const openForm = (
@@ -413,16 +416,29 @@ function WitnessIntake({ state, run }: { state: State; run: Run }) {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (!holder) return;
-            if (run({ type: 'testify', author: holder, text }, 'Sworn. Hand the phone on. Do not read ahead.')) {
+            if (!holder || !role) return;
+            if (run({ type: 'testify', author: holder, role, text }, 'Sworn. Hand the phone on. Do not read ahead.')) {
               setHolder('');
+              setRole(null);
               setText('');
+              // The button just pressed is gone. Land on the picker for the next
+              // witness, so a stray Space cannot skip the card.
+              requestAnimationFrame(() =>
+                (document.getElementById('witness-holder') ?? document.getElementById('bench-card-title'))?.focus(),
+              );
             }
           }}
         >
           <div className="field">
             <label htmlFor="witness-holder">Who is holding the phone?</label>
-            <select id="witness-holder" value={holder} onChange={(event) => setHolder(event.target.value as Attendee | '')}>
+            <select
+              id="witness-holder"
+              value={holder}
+              onChange={(event) => {
+                setHolder(event.target.value as Attendee | '');
+                setRole(view.roles[Math.floor(Math.random() * view.roles.length)] ?? null);
+              }}
+            >
               <option value="">Choose</option>
               {choices.map((who) => (
                 <option key={who} value={who}>
@@ -433,7 +449,7 @@ function WitnessIntake({ state, run }: { state: State; run: Run }) {
           </div>
           {holder ? (
             <>
-              <p className="bench-role">You are the {roleFor(state, holder)}.</p>
+              <p className="bench-role">You are the {role}.</p>
               <div className="field">
                 <label htmlFor="witness-text">Your testimony (twelve words or fewer)</label>
                 <textarea

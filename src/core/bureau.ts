@@ -68,7 +68,7 @@ export const DOCKET: Record<DocketKind, { prefix: string; label: string; placeho
   forecast: {
     prefix: 'FWS',
     label: 'Fish Weather',
-    placeholder: 'Low snack pressure. Dmitriy front approaching from lanai.',
+    placeholder: 'Low snack pressure. Cooler front from lanai.',
   },
   verdict: { prefix: 'VER', label: 'Verdict', placeholder: 'Exhibit A ruled Authentic, 4 to 2.' },
   decree: { prefix: 'DEC', label: 'Decree', placeholder: 'The cooler may speak once per hour.' },
@@ -94,6 +94,7 @@ export const WITNESS_ROLES = [
   'Sports Commentator',
   'Victorian Ghost',
 ] as const;
+export type WitnessRole = (typeof WITNESS_ROLES)[number];
 
 export const MAX_SUBJECT_CHARS = 80;
 export const MAX_TESTIMONY_CHARS = 120;

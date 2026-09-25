@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { ATTENDEES, BOUNTIES, DIRECTIVES, FISH, GUARDRAILS, PREDICTIONS } from './content';
-import { ACTS, ACT_NUMBERS, BENCH_CARDS, CONTRABAND, WITNESS_ROLES, benchDeck } from './bureau';
+import { ACTS, ACT_NUMBERS, BENCH_CARDS, CONTRABAND, DOCKET, WITNESS_ROLES, benchDeck } from './bureau';
 
 it('keeps every id an existing save may hold, because removing one makes that save unreadable', () => {
   const ids = (list: readonly { id: string }[]) => list.map((item) => item.id);
@@ -25,6 +25,7 @@ it('keeps the Bureau deadpan: no em dashes and no exclamation marks anywhere it 
     ...BENCH_CARDS.flatMap((card) => [card.title, ...card.lines, card.vote?.verdict ?? '', card.link?.label ?? '']),
     ...Object.values(ACTS).flatMap((info) => [info.title, info.body, info.memo('https://example.test/')]),
     ...Object.values(CONTRABAND),
+    ...Object.values(DOCKET).map((kind) => kind.placeholder),
     ...DIRECTIVES,
     ...GUARDRAILS,
     ...FISH.map((fish) => fish.note),
@@ -39,4 +40,10 @@ it('keeps the Bureau deadpan: no em dashes and no exclamation marks anywhere it 
 it('never puts a person on trial: every vote card concerns an object, a story or a retcon', () => {
   const votes = BENCH_CARDS.filter((card) => card.vote).map((card) => card.id);
   expect(votes).toEqual(['exhibit-a', 'sworn-testimony', 'object-trial', 'retcon']);
+});
+
+it('keeps people out of the examples the Case File shows', () => {
+  for (const { placeholder } of Object.values(DOCKET)) {
+    for (const who of ATTENDEES) expect(placeholder, placeholder).not.toContain(who);
+  }
 });

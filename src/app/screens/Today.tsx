@@ -19,8 +19,9 @@ import { closingLabel, isReadOnly, relativeTime } from '../../core/time';
 import type { State } from '../../core/state';
 import { Card, Empty, Screen, Stat } from '../../ui/primitives';
 import { FileLine } from '../Bench';
+import type { Note } from '../useParty';
 
-type Run = (action: Action, note?: string) => boolean;
+type Run = (action: Action, note?: Note) => boolean;
 type Go = (tab: string, anchor?: string | null) => void;
 
 const MISSION_LABEL = { sealed: 'Unopened', accepted: 'Under way', done: 'Done', void: 'Passed' } as const;
@@ -233,7 +234,7 @@ function CaseFile({ state, now, locked, run }: { state: State; now: number; lock
       </h3>
       {playing ? (
         <Card band="Evidence" title="File it">
-          <FileLine state={state} run={run} kinds={PUBLIC_KINDS} />
+          <FileLine run={run} kinds={PUBLIC_KINDS} />
           <p className="hint">Public on this phone. Objects, rooms and snacks only. Anyone may strike anything, no reason owed.</p>
         </Card>
       ) : null}

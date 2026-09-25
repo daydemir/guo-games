@@ -153,3 +153,28 @@ test('every Bench card renders, and the whole deck fits a phone without sideways
   }
   expect(errors).toEqual([]);
 });
+
+test('a memo link opened in a second tab never erases work from the first', async ({ page, context }) => {
+  await page.goto('/');
+  await join(page, 'Deniz');
+
+  // The group chat link opens a new tab; the first one stays alive.
+  const second = await context.newPage();
+  await second.goto('/#today/case-file');
+  await second.getByLabel('What happened').fill('Filed in the second tab.');
+  await second.getByRole('button', { name: 'File it' }).click();
+  await expect(second.getByText('Filed as INC-0001.')).toBeVisible();
+
+  // The first tab catches up on its own, then files under the next number.
+  await expect(page.locator('.case-file')).toContainText('Filed in the second tab.');
+  await page.getByLabel('What happened').fill('Filed in the first tab.');
+  await page.getByRole('button', { name: 'File it' }).click();
+  await expect(page.getByText('Filed as INC-0002.')).toBeVisible();
+
+  const docket = await page.evaluate(() => JSON.parse(localStorage.getItem('guo-games/party') ?? '{}').docket);
+  expect(docket.map((entry: { seq: number; text: string }) => `${entry.seq} ${entry.text}`)).toEqual([
+    '1 Filed in the second tab.',
+    '2 Filed in the first tab.',
+  ]);
+  await expect(second.locator('.case-file')).toContainText('Filed in the first tab.');
+});

@@ -12,8 +12,9 @@ import {
   isAttendee,
 } from './content';
 import type { Attendee, Bounty, Fish, Identity, Prediction } from './content';
-import { caseNumber, heldBounties, openPicks, witnessRole } from './actions';
-import { CONTRABAND, WITNESS_ROLES } from './bureau';
+import { caseNumber, freeRoles, heldBounties, openPicks } from './actions';
+import { CONTRABAND } from './bureau';
+import type { WitnessRole } from './bureau';
 import type { DocketKind } from './bureau';
 import type { DocketEntry, Memory, State } from './state';
 import { isReadOnly } from './time';
@@ -356,33 +357,25 @@ export type TestimonyView = {
   count: number;
   /** Who has not testified yet, for the "who is holding the phone" picker. */
   pending: Attendee[];
-  /** Empty until the reveal, in role order rather than the order sworn, and never with an author. */
+  /** Roles still free, for the Bench to deal one at random. */
+  roles: WitnessRole[];
+  /** Empty until the reveal, in role order, and there is no author to show. */
   entries: { id: string; role: string; text: string }[];
 };
 
 /**
  * What the Bench may show about Seven Witnesses. Before the reveal nothing
- * anyone wrote is visible; after it, only roles and words, never who.
+ * anyone wrote is visible; after it, only roles and words.
  */
 export function testimonyView(state: State): TestimonyView | null {
   const round = state.testimony;
   if (!round) return null;
-  const sworn = new Set(round.entries.map((entry) => entry.author));
-  const entries = round.revealed
-    ? round.entries
-        .map(({ id, role, text }) => ({ id, role, text }))
-        .sort((a, b) => WITNESS_ROLES.indexOf(a.role) - WITNESS_ROLES.indexOf(b.role))
-    : [];
   return {
     subject: round.subject,
     revealed: round.revealed,
     count: round.entries.length,
-    pending: ATTENDEES.filter((attendee) => !sworn.has(attendee)),
-    entries,
+    pending: round.revealed ? [] : ATTENDEES.filter((attendee) => !round.sworn.includes(attendee)),
+    roles: freeRoles(round),
+    entries: round.revealed ? round.entries : [],
   };
-}
-
-/** The role the witness holding the phone is about to testify as. */
-export function roleFor(state: State, holder: Attendee): string | null {
-  return state.testimony ? witnessRole(state.testimony, holder) : null;
 }

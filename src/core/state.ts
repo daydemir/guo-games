@@ -100,21 +100,40 @@ export type DocketEntry = z.infer<typeof docketEntrySchema>;
 
 /**
  * Seven Witnesses: sealed accounts of one small event, passed round the Bench
- * phone. Authors are kept so nobody testifies twice, and never shown.
+ * phone. Nothing stored links a name to an account, so neither the save nor a
+ * backup can unseal it:
+ * - `entries` hold only a random role and the words, kept in role order rather
+ *   than the order sworn, with no author and no timestamp.
+ * - `sworn` is who has testified, in roster order, only so nobody testifies
+ *   twice. It is emptied at the reveal, when nobody can testify any more.
  */
-export const testimonySchema = z.object({
+const testimonyShape = z.object({
   subject: z.string().min(1).max(MAX_SUBJECT_CHARS),
   revealed: z.boolean(),
+  sworn: z.array(attendee).default([]),
   entries: z.array(
     z.object({
       id: z.string(),
-      at: z.number(),
-      author: attendee,
       role: z.enum(WITNESS_ROLES),
       text: z.string().min(1).max(MAX_TESTIMONY_CHARS),
     }),
   ),
 });
+
+/**
+ * An earlier build of this branch kept `author` and `at` on each entry. Those
+ * keys are stripped on read; an open round keeps who has sworn, and a revealed
+ * one keeps nothing.
+ */
+export const testimonySchema = z.preprocess((value) => {
+  if (typeof value !== 'object' || value === null || 'sworn' in value) return value;
+  const round = value as { revealed?: unknown; entries?: unknown };
+  const authors = Array.isArray(round.entries)
+    ? round.entries.map((entry) => (entry as { author?: unknown })?.author).filter((author) => author !== undefined)
+    : [];
+  const sworn = round.revealed ? [] : ATTENDEES.filter((who) => authors.includes(who));
+  return { ...round, sworn };
+}, testimonyShape);
 export type Testimony = z.infer<typeof testimonySchema>;
 
 export const stateSchema = z.object({

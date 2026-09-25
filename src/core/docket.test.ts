@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { act } from './actions';
 import { caseFile } from './selectors';
 import { emptyState } from './state';
-import { MAX_DOCKET } from './bureau';
+import { DOCKET, MAX_DOCKET } from './bureau';
 import { NOW, as } from './fixtures';
 
 const file = (text: string, kind: 'incident' | 'forecast' | 'verdict' = 'incident') =>
@@ -31,7 +31,8 @@ it('holds a Fish Weather forecast to exactly seven words', () => {
   expect(() => act(as('Jack'), file('Low snack pressure moving in from the lanai tonight', 'forecast'), NOW)).toThrow(
     'Forecasts are exactly seven words. You have 9.',
   );
-  const state = act(as('Jack'), file('Low snack pressure. Dmitriy front approaching, lanai.', 'forecast'), NOW);
+  // The example the form shows has to pass its own rule.
+  const state = act(as('Jack'), file(DOCKET.forecast.placeholder, 'forecast'), NOW);
   expect(caseFile(state)[0].label).toBe('FWS-0001');
 });
 

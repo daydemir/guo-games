@@ -89,10 +89,15 @@ function migrate(parsed: unknown): Record<string, unknown> | null {
   return null;
 }
 
-/** Writes the party back. The only failure worth naming is a full device. */
-export function save(storage: StorageLike, state: State): void {
+/**
+ * Writes the party back and returns the bytes written, so a caller can tell
+ * its own write from another tab's. The only failure worth naming is a full device.
+ */
+export function save(storage: StorageLike, state: State): string {
+  const raw = JSON.stringify(state);
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storage.setItem(STORAGE_KEY, raw);
+    return raw;
   } catch (error) {
     if (isQuotaError(error)) {
       throw new Error('Device storage is full. Withdraw a memory with a photo or voice note, then try again.', {

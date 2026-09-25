@@ -1,4 +1,5 @@
 import {
+  ATTENDEES,
   FEED_LIMIT,
   MAX_FUTURE_CHARS,
   MAX_MEMORIES,
@@ -25,7 +26,7 @@ import {
   MAX_TESTIMONY_CHARS,
   WITNESS_ROLES,
 } from './bureau';
-import type { Act, DocketKind } from './bureau';
+import type { Act, DocketKind, WitnessRole } from './bureau';
 import { sessionSchema } from './state';
 import type { FeedEvent, State, Testimony } from './state';
 import { isReadOnly } from './time';
@@ -49,7 +50,7 @@ export type Action =
   | { type: 'file'; kind: DocketKind; text: string }
   | { type: 'strike'; id: string }
   | { type: 'openTestimony'; subject: string }
-  | { type: 'testify'; author: Attendee; text: string }
+  | { type: 'testify'; author: Attendee; role: WitnessRole; text: string }
   | { type: 'revealTestimony' }
   | { type: 'strikeTestimony'; id: string };
 
@@ -340,7 +341,7 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       if (state.testimony && !state.testimony.revealed && state.testimony.entries.length >= 2) {
         throw new Error('Testimony is already open. Read it out before starting another.');
       }
-      next.testimony = { subject, revealed: false, entries: [] };
+      next.testimony = { subject, revealed: false, sworn: [], entries: [] };
       log('Testimony is open. The phone goes round.');
       break;
     }
@@ -354,15 +355,18 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       if (action.author !== me && !isOrganizerIdentity(me)) {
         throw new Error('You can only testify as yourself.');
       }
-      if (round.entries.some((entry) => entry.author === action.author)) {
-        throw new Error(`${action.author} has already testified.`);
-      }
+      if (round.sworn.includes(action.author)) throw new Error(`${action.author} has already testified.`);
+      if (!freeRoles(round).includes(action.role)) throw new Error('That role is already taken. Choose again.');
       const text = action.text.trim();
       if (!text || text.length > MAX_TESTIMONY_CHARS) {
         throw new Error(`Testimony is 1 to ${MAX_TESTIMONY_CHARS} characters.`);
       }
-      const role = witnessRole(round, action.author);
-      round.entries.push({ id: newId(), at: now, author: action.author, role, text });
+      // The name goes on the roll, the words go under the role, and nothing
+      // joins the two: roster order and role order say nothing about who wrote what.
+      round.sworn = ATTENDEES.filter((who) => who === action.author || round.sworn.includes(who));
+      round.entries = [...round.entries, { id: newId(), role: action.role, text }].sort(
+        (a, b) => WITNESS_ROLES.indexOf(a.role) - WITNESS_ROLES.indexOf(b.role),
+      );
       // No author and no role in the feed: either would unseal the reveal.
       log('A witness has sworn to it.');
       break;
@@ -375,6 +379,8 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       if (round.revealed) throw new Error('This testimony has already been read out.');
       if (round.entries.length < 2) throw new Error('At least two witnesses have to testify first.');
       round.revealed = true;
+      // Nobody can testify after the reveal, so the roll of names has no job left.
+      round.sworn = [];
       log('The testimony was read into the record.');
       break;
     }
@@ -383,9 +389,8 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
       const round = next.testimony;
       const entry = round?.entries.find((item) => item.id === action.id);
       if (!round || !entry) throw new Error('That testimony is already gone.');
-      if (entry.author !== me && !isOrganizerIdentity(me)) {
-        throw new Error('Only the witness, or a Clerk, can strike testimony.');
-      }
+      // Accounts carry no author, so striking one is a Clerk's job, on request, no reason owed.
+      organizerOnly(state, 'strike testimony');
       round.entries = round.entries.filter((item) => item.id !== action.id);
       log('A testimony was struck from the record.');
       break;
@@ -395,23 +400,9 @@ export function act(state: State, action: Action, now: number = Date.now()): Sta
   return next;
 }
 
-/**
- * The role a witness gets. It follows neither the order the phone went round
- * nor the roster, so the table cannot work out whose words are whose: it starts
- * from a hash of the witness and the event, then takes the next free role.
- */
-export function witnessRole(round: Testimony, author: Attendee): (typeof WITNESS_ROLES)[number] {
-  const own = round.entries.find((entry) => entry.author === author);
-  if (own) return own.role;
-  let hash = 0;
-  for (const char of `${author}/${round.subject}`) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  const held = new Set(round.entries.map((entry) => entry.role));
-  for (let step = 0; step < WITNESS_ROLES.length; step += 1) {
-    const role = WITNESS_ROLES[(hash + step) % WITNESS_ROLES.length];
-    if (!held.has(role)) return role;
-  }
-  return WITNESS_ROLES[hash % WITNESS_ROLES.length];
-}
+/** Roles nobody holds yet. The Bench deals one at random, so a role never points at a person. */
+export const freeRoles = (round: Testimony): WitnessRole[] =>
+  WITNESS_ROLES.filter((role) => !round.entries.some((entry) => entry.role === role));
 
 /** INC-0004. Numbers are never reused, so a struck case leaves a gap. */
 export const caseNumber = (kind: DocketKind, seq: number): string =>
