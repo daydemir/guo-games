@@ -125,10 +125,10 @@ bodies, 600 requests a minute per address, 120 writes a minute per party, 5 new
 parties an hour per address and 30 in total, 500 parties, 20 live markets and
 5,000 trades a party. CORS allows only GitHub Pages and local dev and preview.
 
-It runs on Render as `guo-games-markets` (Starter, Oregon, 1 GB disk at
-`/var/data`), built with `npm ci --omit=dev` and started with
-`node server/main.ts`. Environment: `DATA_DIR=/var/data`, `NODE_VERSION=24`,
-and optionally `ALLOWED_ORIGINS`. A build points at a different server with
+It runs on a temporary DigitalOcean droplet `guo-games-markets` (tag
+`guo-games-temp`) at `https://164-92-108-34.sslip.io`: Caddy terminates TLS and
+proxies to `node server/main.ts` under systemd, with `DATA_DIR=/var/data`. It is
+deleted after the wedding weekend. A build points at a different server with
 `VITE_MARKETS_URL`.
 
 ## Architecture

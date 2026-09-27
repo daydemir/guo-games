@@ -37,7 +37,7 @@ export type Live = {
 export type LiveNote = string | ((ledger: Ledger) => string);
 
 /** Where the server is. A build can point elsewhere with VITE_MARKETS_URL. */
-export const DEFAULT_MARKETS_URL = 'https://guo-games-markets.onrender.com';
+export const DEFAULT_MARKETS_URL = 'https://164-92-108-34.sslip.io';
 export const LIVE_KEY = 'guo-games/live';
 export const POLL_MS = 2_500;
 const TIMEOUT_MS = 8_000;
