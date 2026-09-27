@@ -9,7 +9,7 @@ Kevin, Deniz, Nick, Jack, Simon, Nate, Dmitriy at Kevin's Maui bachelor party. D
 ## Product Purpose
 A shared attention engine: a few predictions, one thoughtful act, phone away, quiet witness confirmation, dinner reveal, time capsule.
 ## Capabilities and Constraints
-Standalone local-only installable PWA. No backend, MIX services, credentials, real money, risky prompts, or compulsory participation. Local identities are a demonstration, not authentication. Private content is hidden in the interface, not encrypted.
+Standalone local-first installable PWA. Only the Wedding Markets sync, through one small server of its own (server/). No MIX services, accounts, real money, risky prompts, or compulsory participation. Local identities are a demonstration, not authentication. Private content is hidden in the interface, not encrypted.
 ## Brand Commitments
 Restrained Maui-night and trading-card visual flavor. No gradients, em dashes, fake testimonials, or glassmorphism.
 ## Evidence on Hand

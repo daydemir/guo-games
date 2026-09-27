@@ -40,8 +40,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Cache first for the shell, network for anything else. The app has no API, so
-// a cache hit is always correct and the whole day works with no signal.
+// Cache first for the shell, network for anything else. The only API is the
+// market server on another origin, which the origin check below passes straight
+// through, so a cache hit is always correct and the rest of the day works with
+// no signal.
 //
 // ignoreVary matters: a server that answers with "Vary: Origin" makes the
 // module script request (which carries an Origin header) miss the entry that

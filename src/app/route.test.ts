@@ -25,3 +25,8 @@ it('only ever links a Dispatch memo to a real route', () => {
     expect(parseHash(hashes[0] ?? ''), memo).not.toBeNull();
   }
 });
+
+it('reads a party link, keeping the key exactly as written', () => {
+  expect(parseHash('#live/Ab_9-xYzAb_9-xYzAb_9-x')).toEqual({ tab: 'picks', anchor: 'markets', key: 'Ab_9-xYzAb_9-xYzAb_9-x' });
+  expect(parseHash('#live/<script>')).toBeNull();
+});

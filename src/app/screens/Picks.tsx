@@ -5,17 +5,17 @@ import type { State } from '../../core/state';
 import { Card, Screen, Tally } from '../../ui/primitives';
 import { Markets } from './Markets';
 import type { Note } from '../useParty';
+import type { Live } from '../useMarkets';
 
 type Run = (action: Action, note?: Note) => boolean;
 
 const RESULT_TONE = { yes: 'settled', no: 'settled', void: 'void' } as const;
 
 /**
- * Everything you call ahead of time: a few yes or no predictions, and one fish.
- * Points only. There is no buy-in, no payout and no way to put money on
- * anything, which is deliberate for a group that likes to.
+ * Everything you call ahead of time: the Wedding Markets, a few yes or no
+ * predictions for points, and one fish.
  */
-export function Picks({ state, locked, run }: { state: State; locked: boolean; run: Run }) {
+export function Picks({ state, locked, run, live }: { state: State; locked: boolean; run: Run; live: Live }) {
   const left = picksLeft(state);
   const playing = isAttendee(me(state)) && !locked;
 
@@ -24,15 +24,15 @@ export function Picks({ state, locked, run }: { state: State; locked: boolean; r
       title="Picks"
       lede={
         playing
-          ? `Wedding Markets, predictions, prophecies and the Dock Draft. Hold up to ${MAX_PICKS} open predictions at a time, ${left} slot${left === 1 ? '' : 's'} free. Deliberately fulfilling a prophecy voids it. Points and pretend dollars, never real money.`
-          : 'Everyone’s calls, the markets and the fish draft. Points and pretend dollars, never real money.'
+          ? `Wedding Markets, predictions, prophecies and the Dock Draft. Hold up to ${MAX_PICKS} open predictions at a time, ${left} slot${left === 1 ? '' : 's'} free. Deliberately fulfilling a prophecy voids it.`
+          : 'Everyone’s calls, the markets and the fish draft.'
       }
     >
       <p className="jump">
         Skip to <a href="#predictions">the predictions</a> or <a href="#dock-draft">the Dock Draft</a>
       </p>
-      {/* Keyed by identity, so a Clerk's "Buying for" never carries over to someone else. */}
-      <Markets key={me(state) ?? 'nobody'} state={state} locked={locked} run={run} />
+      {/* Keyed by identity, so a half-made buy never carries over to someone else. */}
+      <Markets key={me(state) ?? 'nobody'} state={state} locked={locked} live={live} />
       <span id="predictions" />
       <Predictions state={state} locked={locked} run={run} />
       <DockDraft state={state} locked={locked} run={run} />

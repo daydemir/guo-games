@@ -109,7 +109,7 @@ export function You({
       </Card>
 
       <p className="fineprint">
-        Local only. No account, no server, no analytics, nothing uploaded.
+        Local first. The Wedding Markets are shared through their own small server; everything else stays on this device. No account, no analytics.
       </p>
     </Screen>
   );

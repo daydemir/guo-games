@@ -22,6 +22,8 @@ export type Party = {
   dismiss: () => void;
   /** Report a problem a screen caught before it ever reached the reducer. */
   fail: (message: string) => void;
+  /** Confirm something that happened outside the reducer, such as a trade. */
+  tell: (message: string) => void;
   /**
    * Set when this device holds a save the app cannot read. Until the player
    * resolves it, every write is refused so their data is not overwritten.
@@ -227,6 +229,11 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
     [store],
   );
 
+  const tell = useCallback((message: string) => {
+    setProblem(null);
+    setNote(message);
+  }, []);
+
   const dismiss = useCallback(() => {
     setProblem(null);
     setNote(null);
@@ -239,6 +246,7 @@ export function useParty(storage: StorageLike | null = browserStorage()): Party 
     note,
     dismiss,
     fail: setProblem,
+    tell,
     recovery,
     exportBackup,
     importBackup,

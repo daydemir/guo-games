@@ -11,7 +11,9 @@
     "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs",
     "build:pages": "GUO_BASE=/guo-games/ npm run build",
     "preview": "vite preview --host 127.0.0.1",
-    "smoke": "npm run build && playwright test"
+    "smoke": "VITE_MARKETS_URL=http://127.0.0.1:8788 npm run build && playwright test",
+    "smoke:live": "npm run build:pages && playwright test -c playwright.live.config.ts",
+    "server": "node server/main.ts"
   },
   "engines": {
     "node": ">=22.12.0"

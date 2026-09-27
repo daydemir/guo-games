@@ -126,8 +126,9 @@ export function JoinScreen({
       </section>
 
       <p className="fineprint">
-        Everything you enter stays in this browser. There is no account, no server and no upload. Anyone
-        holding this device can read anything saved on it, so treat it like a shared notebook.
+        Everything you enter stays in this browser. Only the Wedding Markets leave this phone, shared with
+        everyone on the party link. There is no account. Anyone holding this device can read anything saved on
+        it, so treat it like a shared notebook.
       </p>
     </main>
   );
